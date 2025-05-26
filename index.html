@@ -26,7 +26,7 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
             text-align: center;
             width: 100%;
-            max-width: 1080px; /* 게임판 크기 재조정 */
+            max-width: 1150px; /* 게임판 크기 다시 늘림 */
             box-sizing: border-box;
             position: relative;
         }
@@ -56,15 +56,15 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 15px; /* 멤버 카드 간격 조정 */
+            gap: 20px; /* 멤버 카드 간격 다시 조정 */
             margin-top: 30px;
         }
         .member-card {
             background-color: #ffebee;
             border: 2px solid #ffccbc;
             border-radius: 15px;
-            padding: 10px; /* 카드 패딩 재조정 */
-            width: 350px; /* 카드 크기 재조정 (이미지 크기와 거의 같게) */
+            padding: 5px; /* 카드 패딩 더 줄임 */
+            width: 350px; /* 카드 크기 이미지와 동일하게 유지 */
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
@@ -435,7 +435,9 @@
             const candidates = getCandidateMembersForRound();
             
             const nonEliminatedMembers = memberNames.filter(name => !memberData[name].eliminated);
-            if (nonEliminatedMembers.length < 16 && currentRound > 0) { // 게임이 시작된 후 16인 미만이면 종료
+            // 게임이 시작된 후, 즉 currentRound가 0보다 클 때만 16인 미만이면 종료
+            // (첫 라운드부터 멤버가 16인 미만일 수는 없으므로)
+            if (nonEliminatedMembers.length < 16 && currentRound > 0) { 
                 console.log("남은 멤버가 16인 미만이므로 게임을 종료합니다.");
                 endGame();
                 return []; 
