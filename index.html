@@ -89,3 +89,343 @@
             margin-bottom: 10px;
             border: 2px solid #ddd;
         }
+        .member-card p {
+            margin: 0;
+            font-weight: bold;
+            color: #555;
+            font-size: 1.1em;
+        }
+        .button-group {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            font-weight: bold;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        #startGameButton {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #startGameButton:hover {
+            background-color: #45a049;
+        }
+        #selectButton {
+            background-color: #2196F3;
+            color: white;
+        }
+        #selectButton:hover {
+            background-color: #1976D2;
+        }
+        #nextRoundButton {
+            background-color: #FF9800;
+            color: white;
+        }
+        #nextRoundButton:hover {
+            background-color: #FB8C00;
+        }
+        #resetButton {
+            background-color: #f44336;
+            color: white;
+        }
+        #resetButton:hover {
+            background-color: #d32f2f;
+        }
+        .result-message {
+            margin-top: 25px;
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #3f51b5;
+        }
+        .popup {
+            display: none;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+        .popup h3 {
+            color: #3f51b5;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        .popup p {
+            font-size: 1.1em;
+            color: #555;
+            margin-bottom: 25px;
+        }
+        .popup button {
+            background-color: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+        }
+        .popup button:hover {
+            background-color: #1976D2;
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>멤버 선택 게임</h1>
+        <div class="score-board">
+            <div>총 점수: <span id="totalScore">0</span>점</div>
+            <div>라운드: <span id="roundCount">0</span>/5</div>
+        </div>
+        <div id="gameScreen">
+            <h2>오늘의 멤버를 선택하세요!</h2>
+            <div class="member-display" id="memberSelection">
+                </div>
+            <div class="button-group">
+                <button id="selectButton" disabled>선택 완료</button>
+                <button id="nextRoundButton" disabled>다음 라운드</button>
+                <button id="resetButton" disabled>게임 초기화</button>
+            </div>
+            <div id="resultMessage" class="result-message"></div>
+        </div>
+        <button id="startGameButton">게임 시작</button>
+    </div>
+
+    <div id="gameOverPopup" class="popup">
+        <h3>게임 종료!</h3>
+        <p>총 점수: <span id="finalScore">0</span>점</p>
+        <button id="closePopupAndReset">확인</button>
+    </div>
+    <div id="overlay" class="overlay"></div>
+
+    <script>
+        // 이전에 업로드된 모든 파일명을 기반으로 memberNames 배열을 구성합니다.
+        const memberNames = [
+            "나가노 라라", "나카노 미나미", "다나카 이오리", "류토 아야네", "마츠나가 유이", "마츠모토 모카",
+            "모리사키 사아야", "사카모토 리노", "시부이 미나", "아오키 히나코", "아키요시 유카","야나세 레이아","야마우치 유나","야마카와 마리아",
+            "야스이 히나", "에구치 코코하", "에우라 유카", "오오바 리사키", "오오우치 린카", "요시다 메이", "이마무라 마리아", "이시마츠 유이나",
+            "이시바시 이부키", "이시이 아야네", "이시카와 아미유", "이시하라 한나", "이자와 미유", "이지마 리리아", "이치무라 아이리", "이쿠노 리나",
+            "지토우네 네네", "츠루카와 나치", "츠츠미 후카", "카타히라 사라", "쿠레 유나", "쿠리야마 리나", "쿠리하라 사에", "키타가와 히이로",
+            "타치바나 코코로", "타케모토 쿠루미", "토요나가 아키", "후지노 코코하", "후쿠이 카렌"
+        ];
+
+        let totalScore = 0;
+        let roundCount = 0;
+        const maxRounds = 5;
+        let selectedMember = null;
+        let availableMembers = [...memberNames]; // 게임 시작 시 초기화될 전체 멤버 목록
+        let previouslyShownMembers = new Set(); // 이전에 게임에 등장했던 멤버들을 추적
+        let playedTogetherMembers = new Set(); // 같이 등장했던 멤버들의 조합을 추적
+
+        const memberSelectionDiv = document.getElementById('memberSelection');
+        const totalScoreSpan = document.getElementById('totalScore');
+        const roundCountSpan = document.getElementById('roundCount');
+        const startGameButton = document.getElementById('startGameButton');
+        const selectButton = document.getElementById('selectButton');
+        const nextRoundButton = document.getElementById('nextRoundButton');
+        const resetButton = document.getElementById('resetButton');
+        const resultMessageDiv = document.getElementById('resultMessage');
+        const gameOverPopup = document.getElementById('gameOverPopup');
+        const finalScoreSpan = document.getElementById('finalScore');
+        const closePopupAndResetButton = document.getElementById('closePopupAndReset');
+        const overlay = document.getElementById('overlay');
+
+        startGameButton.addEventListener('click', startGame);
+        selectButton.addEventListener('click', selectMember);
+        nextRoundButton.addEventListener('click', nextRound);
+        resetButton.addEventListener('click', resetGame);
+        closePopupAndResetButton.addEventListener('click', resetGame);
+
+        function startGame() {
+            resetGameData();
+            startGameButton.style.display = 'none';
+            selectButton.disabled = false;
+            nextRoundButton.disabled = true;
+            resetButton.disabled = false;
+            startRound();
+        }
+
+        function resetGameData() {
+            totalScore = 0;
+            roundCount = 0;
+            availableMembers = [...memberNames];
+            previouslyShownMembers = new Set();
+            playedTogetherMembers = new Set();
+            totalScoreSpan.textContent = totalScore;
+            roundCountSpan.textContent = roundCount;
+            resultMessageDiv.textContent = '';
+            memberSelectionDiv.innerHTML = '';
+            selectedMember = null;
+            gameOverPopup.style.display = 'none';
+            overlay.style.display = 'none';
+            startGameButton.style.display = 'block'; // 게임 시작 버튼 다시 보이게
+            selectButton.disabled = true;
+            nextRoundButton.disabled = true;
+            resetButton.disabled = true;
+        }
+
+        function getRandomMembers(count) {
+            const currentRoundMembers = new Set();
+            const tempAvailable = availableMembers.filter(member => {
+                const memberAppearanceCount = Array.from(previouslyShownMembers).filter(m => m === member).length;
+                return memberAppearanceCount < 3;
+            });
+
+            if (tempAvailable.length < count) {
+                console.warn("충분한 멤버가 없습니다. 중복 제한을 완화하거나 멤버를 추가해야 합니다.");
+                // 게임 진행을 위해 제한을 완화하여 멤버를 선택 (필요시)
+                return shuffle([...availableMembers]).slice(0, count);
+            }
+
+            let attempts = 0;
+            while (currentRoundMembers.size < count && attempts < 1000) { // 무한 루프 방지
+                const randomIndex = Math.floor(Math.random() * tempAvailable.length);
+                const potentialMember = tempAvailable[randomIndex];
+
+                let canAdd = true;
+                for (const existingMember of currentRoundMembers) {
+                    const pair1 = `${potentialMember}-${existingMember}`;
+                    const pair2 = `${existingMember}-${potentialMember}`;
+                    if (playedTogetherMembers.has(pair1) || playedTogetherMembers.has(pair2)) {
+                        canAdd = false;
+                        break;
+                    }
+                }
+
+                if (canAdd && !currentRoundMembers.has(potentialMember)) {
+                    currentRoundMembers.add(potentialMember);
+                }
+                attempts++;
+            }
+
+            if (currentRoundMembers.size < count) {
+                console.warn("조건에 맞는 멤버를 찾기 어려워 일부 조건이 무시될 수 있습니다.");
+                // 강제로 멤버를 채웁니다 (같이 등장했던 멤버 조건 완화)
+                const remainingNeeded = count - currentRoundMembers.size;
+                const fillMembers = shuffle([...tempAvailable].filter(m => !currentRoundMembers.has(m)));
+                for (let i = 0; i < remainingNeeded && i < fillMembers.length; i++) {
+                    currentRoundMembers.add(fillMembers[i]);
+                }
+            }
+            
+            return Array.from(currentRoundMembers);
+        }
+
+        function startRound() {
+            if (roundCount >= maxRounds) {
+                endGame();
+                return;
+            }
+
+            roundCount++;
+            roundCountSpan.textContent = roundCount;
+            resultMessageDiv.textContent = '';
+            selectedMember = null;
+            selectButton.disabled = false;
+            nextRoundButton.disabled = true;
+
+            const currentMembers = getRandomMembers(4); // 게임당 4명 멤버
+
+            memberSelectionDiv.innerHTML = ''; // 기존 멤버 제거
+
+            currentMembers.forEach(memberName => {
+                const card = document.createElement('div');
+                card.classList.add('member-card');
+                card.dataset.name = memberName;
+                card.innerHTML = `
+                    <img src="./images/${memberName}.png" alt="${memberName}">
+                    <p>${memberName}</p>
+                `;
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.member-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    selectedMember = memberName;
+                });
+                memberSelectionDiv.appendChild(card);
+                previouslyShownMembers.add(memberName); // 등장한 멤버로 기록
+
+                // 이번 라운드에 같이 등장한 멤버 조합 기록
+                currentMembers.forEach(otherMember => {
+                    if (memberName !== otherMember) {
+                        const pair = [memberName, otherMember].sort().join('-');
+                        playedTogetherMembers.add(pair);
+                    }
+                });
+            });
+        }
+
+        function selectMember() {
+            if (!selectedMember) {
+                resultMessageDiv.textContent = "멤버를 선택해주세요!";
+                return;
+            }
+
+            const currentDisplayedMembers = Array.from(memberSelectionDiv.children).map(card => card.dataset.name);
+            const scores = {
+                [currentDisplayedMembers[0]]: 3, // 1순위 (왼쪽 위)
+                [currentDisplayedMembers[1]]: 2, // 2순위 (오른쪽 위)
+                [currentDisplayedMembers[2]]: 1, // 3순위 (왼쪽 아래)
+                [currentDisplayedMembers[3]]: 0  // 4순위 (오른쪽 아래) - 선택 없음에 해당 (0점)
+            };
+
+            let scoreEarned = scores[selectedMember] || 0; // 선택하지 않은 경우 0점
+            totalScore += scoreEarned;
+            totalScoreSpan.textContent = totalScore;
+            resultMessageDiv.textContent = `${selectedMember}을(를) 선택하여 ${scoreEarned}점을 얻었습니다!`;
+
+            selectButton.disabled = true;
+            nextRoundButton.disabled = false;
+        }
+
+        function endGame() {
+            finalScoreSpan.textContent = totalScore;
+            gameOverPopup.style.display = 'block';
+            overlay.style.display = 'block';
+            selectButton.disabled = true;
+            nextRoundButton.disabled = true;
+            resetButton.disabled = false;
+        }
+
+        function resetGame() {
+            resetGameData();
+            startGameButton.style.display = 'block'; // 게임 시작 버튼 다시 보이게
+            selectButton.disabled = true;
+            nextRoundButton.disabled = true;
+            resetButton.disabled = true;
+        }
+
+        // 배열 섞기 함수 (Fisher-Yates shuffle)
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+    </script>
+</body>
+</html>
