@@ -377,7 +377,7 @@
         });
 
         let currentRound = 0;
-        const membersPerRound = 3; 
+        const membersPerRound = 3; // 한 게임에 3명 등장
         let selectionOrder = []; // 사용자가 클릭한 순서대로 멤버 저장 (최대 3명)
         let playedCombinations = new Set(); // 같은 조합이 2번 나오지 않도록 추적 (정렬된 문자열 조합)
         let roundTimeout; // 다음 라운드로 자동 진행될 timeout ID
@@ -478,7 +478,9 @@
 
             // 게임 종료 조건 검사
             const activeMembers = memberNames.filter(name => !memberData[name].eliminated);
-            if (activeMembers.length < membersPerRound || currentRound > 60) { // 모든 멤버를 여러 번 보여줄 수 있을 정도로 충분한 라운드 후 종료
+            // 16인 이하로 남으면 라운드 종료 (16인 선발이 가능하도록)
+            // 또는 너무 많은 라운드가 진행되면 종료 (무한 루프 방지)
+            if (activeMembers.length < 16 || currentRound > 60) { 
                 endGame();
                 return;
             }
@@ -509,14 +511,22 @@
             const isAlreadySelected = selectionOrder.includes(memberName);
 
             if (isAlreadySelected) {
-                // 이미 선택된 카드면 선택 해제
-                clickedCard.classList.remove('selected');
-                const rankSpan = clickedCard.querySelector('.selection-rank');
-                if (rankSpan) rankSpan.textContent = ''; // 순위 숫자 제거
-
-                const index = selectionOrder.indexOf(memberName);
-                if (index > -1) {
-                    selectionOrder.splice(index, 1); // 배열에서 제거
+                // 이미 선택된 카드면 선택 해제 (가장 마지막에 선택된 카드만 해제 가능하도록 수정)
+                if (selectionOrder[selectionOrder.length - 1] === memberName) {
+                    clickedCard.classList.remove('selected');
+                    const rankSpan = clickedCard.querySelector('.selection-rank');
+                    if (rankSpan) rankSpan.textContent = ''; // 순위 숫자 제거
+                    selectionOrder.pop(); // 배열에서 마지막 요소 제거
+                    
+                    // 해제 후 남은 카드들의 순위 업데이트
+                    selectionOrder.forEach((name, index) => {
+                        const cardElement = memberSelectionDiv.querySelector(`[data-name="${name}"]`);
+                        if (cardElement) {
+                            cardElement.querySelector('.selection-rank').textContent = index + 1;
+                        }
+                    });
+                } else {
+                    alert("선택은 가장 마지막에 클릭한 멤버부터 해제할 수 있습니다.");
                 }
             } else {
                 // 아직 선택되지 않았고, 3명 미만이면 선택 추가
@@ -527,13 +537,18 @@
                     if (rankSpan) rankSpan.textContent = selectionOrder.length; // 순위 숫자 표시
                 } else {
                     // 이미 3명 선택되었으면 경고
-                    alert("세 명의 멤버를 모두 선택했습니다. 선택을 바꾸려면 이미 선택된 멤버를 클릭하여 해제하세요.");
+                    alert("세 명의 멤버를 모두 선택했습니다. 선택을 바꾸려면 마지막에 선택한 멤버를 클릭하여 해제하세요.");
                     return;
                 }
             }
 
             // 3명의 멤버가 모두 선택되었는지 확인
             if (selectionOrder.length === membersPerRound) {
+                // 모든 카드 클릭 비활성화
+                document.querySelectorAll('.member-card').forEach(card => {
+                    card.removeEventListener('click', handleCardClick);
+                    card.style.cursor = 'default';
+                });
                 // 잠시 후에 점수 부여 및 다음 라운드 진행
                 setTimeout(() => {
                     applyScoresAndProceed();
@@ -542,12 +557,6 @@
         }
 
         function applyScoresAndProceed() {
-            // 모든 카드 클릭 비활성화
-            document.querySelectorAll('.member-card').forEach(card => {
-                card.removeEventListener('click', handleCardClick);
-                card.style.cursor = 'default';
-            });
-
             // 점수 부여
             memberData[selectionOrder[0]].score += 2; // 1순위
             memberData[selectionOrder[1]].score += 1; // 2순위
@@ -571,6 +580,7 @@
                 } else if (index === 2) {
                     card.classList.add('chosen-3rd');
                 }
+                card.classList.remove('selected'); // 선택 표시 제거
             });
 
             // 다음 라운드 시작
