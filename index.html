@@ -493,19 +493,19 @@
         const initialSelectionTarget = 16; // 1차 선발 목표 인원
         
         // 2페이즈(최종 선발)에서 라운드를 얼마나 더 진행할지 결정하는 임계값
-        // 예: 16명 이하가 된 후에도 10 라운드 더 진행하도록 설정 (변별력 확보)
-        const finalSelectionMaxRoundsAfterTargetMet = 10; 
+        // 예: 16명 이하가 된 후에도 15 라운드 더 진행하도록 설정 (변별력 확보)
+        const finalSelectionMaxRoundsAfterTargetMet = 15; 
         let finalSelectionRoundCount = 0; // 2페이즈 진입 후 라운드 카운트
 
         // 점수 정의
         const scores = {
             mainRound: { // 1차 선발, 최종 선발 단계 점수 (2페이즈)
-                rank1: 3,
-                rank2: 1,
+                rank1: 5, // 기존 3점에서 5점으로 변경
+                rank2: 3, // 기존 1점에서 3점으로 변경
                 rank3: 0 // 3순위는 자동선택
             },
             top3Round: { // 최종 3인 라운드 (3페이즈) 점수 (더 높은 가중치)
-                rank1: 10, // 1위는 크게
+                rank1: 10, 
                 rank2: 5,
                 rank3: 1
             }
@@ -579,11 +579,11 @@
                 const top3Names = sortedMembers.slice(0, 3).map(m => m.name);
                 eligible = eligible.filter(name => top3Names.includes(name));
                 // 최종 3인이 3명 미만이면 (예: 탈락해서 2명 남았으면) 게임 종료
-                if (eligible.length < membersPerRound) {
+                if (eligible.length < membersPerRound) { // membersPerRound는 3
                     alert("최종 3인 라운드를 진행할 수 있는 멤버가 부족합니다.");
                     gamePhase = 'results';
                     displayResults();
-                    return [];
+                    return []; // 빈 배열 반환하여 라운드 진행 중지
                 }
             }
             
@@ -637,12 +637,20 @@
             }
 
             // 최종적으로 뽑힌 멤버가 3명 미만이면 게임을 종료할 수 있음
-            if (selected.length < membersPerRound) {
+            // (top3Selection 페이즈에서는 이미 getEligibleMembersForRound에서 처리됨)
+            if (selected.length < membersPerRound && gamePhase !== 'top3Selection') {
                 alert("더 이상 라운드를 진행할 수 있는 멤버가 부족하여 게임을 종료합니다.");
                 gamePhase = 'results';
                 displayResults();
                 return;
             }
+            if (selected.length === 0 && gamePhase === 'top3Selection') {
+                 // top3Selection 진입했는데 멤버가 없으면 바로 결과 화면으로
+                 gamePhase = 'results';
+                 displayResults();
+                 return;
+            }
+
 
             availableMembersForRound = selected;
             renderMembers();
@@ -679,18 +687,21 @@
                 currentRoundElement.textContent = `2페이즈 ${finalSelectionRoundCount} 라운드`; 
                 updateInstructionText();
 
-                // 2페이즈 종료 조건: 지정된 라운드 수를 채웠거나, 16명 이하가 되고 더 이상 게임 진행이 어렵다면
-                if (finalSelectionRoundCount >= finalSelectionMaxRoundsAfterTargetMet || nonEliminatedCount < membersPerRound) {
-                    // 2페이즈에서 지정된 라운드 수를 채웠거나, 최종 3인 라운드에 필요한 멤버 수가 부족해지면 3페이즈로 전환
-                    const sortedMembers = getSortedMembers(false);
-                    if (sortedMembers.length >= 3) {
+                // 2페이즈 종료 조건: 지정된 라운드 수를 채웠거나, 더 이상 라운드 진행이 어렵다면
+                // 현재 살아있는 멤버 중 상위 3명이 존재하는지 확인
+                const sortedMembers = getSortedMembers(false);
+                const canProceedToTop3 = sortedMembers.length >= 3;
+
+                if (finalSelectionRoundCount >= finalSelectionMaxRoundsAfterTargetMet || !canProceedToTop3 || nonEliminatedCount < membersPerRound) {
+                    if (canProceedToTop3) { // 최종 3인 라운드로 갈 멤버가 3명 이상이면
                         gamePhase = 'top3Selection';
                         currentRound = 0; // 3페이즈 라운드 카운트 초기화
                         currentRoundElement.textContent = `최종 3인 결정 라운드!`;
                         updateInstructionText();
                         alert("최종 3인 결정 라운드로 진입합니다!");
-                    } else {
-                        // 3페이즈로 갈 멤버가 3명 미만이면 바로 결과 화면으로
+                        selectMembersForRound(); // 3페이즈는 한 번만 진행되므로 바로 멤버 선택
+                        return; // 여기서 함수 종료
+                    } else { // 3페이즈로 갈 멤버가 3명 미만이면 바로 결과 화면으로
                         gamePhase = 'results';
                         displayResults();
                         return;
@@ -698,17 +709,8 @@
                 }
             }
 
-            if (gamePhase === 'top3Selection') {
-                // 3페이즈는 단 한 라운드만 진행
-                currentRound = 1; // 3페이즈는 1라운드로 고정
-                currentRoundElement.textContent = `최종 3인 결정 라운드!`;
-                updateInstructionText();
-                
-                // 3페이즈는 한 번만 진행되므로, 바로 멤버를 선택하고 종료
-                selectMembersForRound();
-                return; // 여기서 함수 종료, 다음 라운드 진입 방지
-            }
-            
+            // 3페이즈는 startNewRound에서 직접 호출 후 return하므로 여기서는 다시 호출하지 않음
+
             // 모든 멤버가 3회 이상 등장했거나, 남은 멤버가 없으면 게임 종료
             const canStillPlay = Object.values(memberData).some(m => !m.eliminated && m.appearances < maxAppearances);
             if (!canStillPlay || Object.values(memberData).filter(m => !m.eliminated).length < membersPerRound) {
