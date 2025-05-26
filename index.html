@@ -304,13 +304,13 @@
         .restart-button-group button {
             width: 250px; 
         }
-        /* 동점자 라운드 시 표시될 안내 텍스트 스타일 */
+        /* 동점자 라운드 시 표시될 안내 텍스트 스타일 (이제 사용 안 함) */
         .tie-breaker-info {
             font-weight: bold;
             color: #ad1457;
             font-size: 1.1em;
             margin-bottom: 15px;
-            animation: pulse 1.5s infinite alternate; /* 깜빡이는 효과 */
+            display: none !important; /* 이 요소를 완전히 숨김 */
         }
 
         @keyframes pulse {
@@ -340,10 +340,7 @@
                 margin-top: 0; 
                 margin-bottom: 15px; 
             }
-            .tie-breaker-info { /* 모바일에서 동점자 안내 텍스트 크기 조정 */
-                font-size: 0.9em;
-            }
-
+            /* .tie-breaker-info 는 위에서 !important로 완전히 숨김 */
 
             .member-display {
                 flex-direction: column; 
@@ -481,17 +478,15 @@
             "이시바시 이부키", "이시이 아야네", "이시카와 아미유", "이시하라 한나", "이자와 미유", "이지마 리리아", "이치무라 아이리", "이쿠노 리나",
             "지토우에 네네", "츠루카와 나치", "츠츠미 후카", "카타히라 사라", "쿠레 유나", "쿠리야마 리나", "쿠리하라 사에", "키타가와 히이로",
             "타치바나 코코로", "타케모토 쿠루미", "토요나가 아키", "후지노 코코하", "후쿠이 카렌"
+            // "하카타 하나"는 여기서 삭제되었습니다.
         ];
 
         let memberData = {};
         let currentRound = 0;
-        let gamePhase = 'initialSelection'; // 'initialSelection', 'finalSelection', 'internalTieBreak', 'results'
+        let gamePhase = 'initialSelection'; // 'initialSelection', 'finalSelection', 'results'
         let selectionOrder = []; // 현재 라운드에서 선택된 멤버들의 이름 (순서대로)
         let availableMembersForRound = []; // 현재 라운드에 표시될 멤버들
-        let tieBreakerMembers = []; // 동점자 라운드에 들어온 멤버들 (이름 배열)
-        let tieBreakQueue = []; // 내부 동점자 라운드를 위한 대기열 (객체 {rank, members})
-        let currentTieBreakInfo = null; // 현재 진행 중인 내부 동점자 라운드 정보
-
+        
         const maxAppearances = 3; // 한 멤버는 3회 이상 등장하지 않음
         const membersPerRound = 3; // 게임당 보여주는 멤버 3명
         const initialSelectionTarget = 16; // 1차 선발 목표 인원
@@ -502,11 +497,6 @@
                 rank1: 3,
                 rank2: 1,
                 rank3: 0 // 3순위는 자동선택
-            },
-            tieBreakRound: { // 동점자 라운드 점수
-                selected: 0.3,
-                unselected: 0.1, // 2인 동점시 선택되지 않은 1인
-                thirdRank: 0 // 3인 이상 동점시 3순위 (자동)
             }
         };
 
@@ -517,7 +507,7 @@
         const resultsScreen = document.getElementById('resultsScreen');
         const topMembersDisplay = document.getElementById('topMembersDisplay');
         const finalSelectionList = document.getElementById('finalSelectionList');
-        const tieBreakerInfoElement = document.getElementById('tieBreakerInfo');
+        const tieBreakerInfoElement = document.getElementById('tieBreakerInfo'); // 이 요소는 이제 사용되지 않음
 
         function initializeGame() {
             memberData = {};
@@ -528,124 +518,110 @@
                     zeroScoreCount: 0, // 0점 받은 횟수 (3순위 또는 선택 없음)
                     eliminated: false, // 0점 3번 받으면 탈락
                     lastSeen: -1, // 마지막 등장 라운드
-                    previousRoundGroup: new Set() // 함께 등장했던 멤버들 기록 (세트)
+                    previousRoundGroup: new Set(), // 함께 등장했던 멤버들 기록 (세트)
+                    highestRankAchievedInRound: 4 // 라운드별 최고 순위 (1:1순위, 2:2순위, 3:3순위, 4:등장 안함)
                 };
             });
             currentRound = 0;
             gamePhase = 'initialSelection';
             selectionOrder = [];
             availableMembersForRound = [];
-            tieBreakerMembers = [];
-            tieBreakQueue = [];
-            currentTieBreakInfo = null;
 
             gameScreen.style.display = 'block';
             resultsScreen.style.display = 'none';
-            tieBreakerInfoElement.style.display = 'none';
+            // tieBreakerInfoElement.style.display = 'none'; // CSS에서 직접 숨기도록 변경
 
             updateInstructionText();
             startNewRound();
         }
 
         function updateInstructionText() {
+            const nonEliminatedCount = Object.values(memberData).filter(m => !m.eliminated).length;
             if (gamePhase === 'initialSelection') {
-                const nonEliminatedCount = Object.values(memberData).filter(m => !m.eliminated).length;
                 instructionTextElement.textContent = `현재 인원: ${nonEliminatedCount}명. ${initialSelectionTarget}명을 선발 중입니다.`;
             } else if (gamePhase === 'finalSelection') {
                 instructionTextElement.textContent = `최종 선발 16인 내 점수 경쟁 중입니다.`;
-            } else if (gamePhase === 'internalTieBreak') {
-                if (currentTieBreakInfo) {
-                    const rankText = currentTieBreakInfo.rank > 0 ? `${currentTieBreakInfo.rank}위` : "동점자";
-                    if (tieBreakerMembers.length === 2) {
-                        instructionTextElement.textContent = `${rankText} 동점자 라운드: 이 멤버들 중 한 명을 선택하세요! (선택된 멤버 0.3점, 자동선택 0.1점)`;
-                    } else { // 3명 이상
-                        instructionTextElement.textContent = `${rankText} 동점자 라운드: 이 멤버들 중 1순위, 2순위를 선택하세요! (1순위 0.3점, 2순위 0.1점, 나머지 0점)`;
-                    }
-                }
-                tieBreakerInfoElement.style.display = 'block';
             } else if (gamePhase === 'results') {
                 instructionTextElement.textContent = `게임이 종료되었습니다! 최종 결과를 확인하세요.`;
-                tieBreakerInfoElement.style.display = 'none';
             }
         }
 
         function getEligibleMembers(phase) {
-            let eligible = [];
-            let allMembers = Object.keys(memberData);
+            let eligible = Object.keys(memberData).filter(name => !memberData[name].eliminated);
 
-            if (phase === 'internalTieBreak') {
-                eligible = [...tieBreakerMembers]; // 동점자 라운드는 이미 정해진 멤버들만 사용
-            } else { // initialSelection 또는 finalSelection
-                let candidates = allMembers.filter(name => !memberData[name].eliminated);
-
-                if (phase === 'finalSelection') {
-                    const sortedMembers = getSortedMembers(false);
-                    const currentTop16Names = sortedMembers.slice(0, initialSelectionTarget).map(m => m.name);
-                    candidates = candidates.filter(name => currentTop16Names.includes(name));
-                }
-
-                eligible = candidates.filter(name =>
-                    memberData[name].appearances < maxAppearances &&
-                    (currentRound === 0 || !memberData[name].previousRoundGroup.has(name)) // 이전 라운드에 함께 나왔던 멤버 배제
-                );
+            if (phase === 'finalSelection') {
+                const sortedMembers = getSortedMembers(false);
+                const currentTop16Names = sortedMembers.slice(0, initialSelectionTarget).map(m => m.name);
+                eligible = eligible.filter(name => currentTop16Names.includes(name));
             }
+
+            // 등장 횟수 제한 및 이전 라운드 그룹 중복 방지
+            eligible = eligible.filter(name =>
+                memberData[name].appearances < maxAppearances
+            );
+
+            // 현재 라운드에 뽑힐 멤버를 위한 필터링 (previousRoundGroup 로직)
+            // eligible 배열에서 3명을 뽑을 때, 서로의 previousRoundGroup에 포함되지 않도록 함
             return eligible;
         }
 
         function selectMembersForRound() {
             let selected = [];
-            let eligible = [];
+            let eligible = getEligibleMembers(gamePhase);
+            let attempts = 0;
+            const maxAttempts = 500; 
 
-            if (gamePhase === 'internalTieBreak') {
-                selected = [...tieBreakerMembers];
-            } else {
-                eligible = getEligibleMembers(gamePhase);
+            // eligible 멤버들을 섞어서 무작위성을 높임
+            eligible.sort(() => Math.random() - 0.5); 
 
-                let attempts = 0;
-                const maxAttempts = 500; // 무한 루프 방지
-                
-                // 현재 라운드에서 뽑을 멤버들의 조합을 저장할 임시 배열
-                let currentRoundCandidates = [];
+            while (selected.length < membersPerRound && eligible.length > 0 && attempts < maxAttempts) {
+                const candidate = eligible.shift(); // 앞에서부터 하나씩 시도
 
-                while (selected.length < membersPerRound && eligible.length > 0 && attempts < maxAttempts) {
-                    const availableInEligible = eligible.filter(name => !selected.includes(name));
-                    if (availableInEligible.length === 0) break;
-
-                    const randomMember = availableInEligible[Math.floor(Math.random() * availableInEligible.length)];
-                    
-                    let canAdd = true;
-                    // "같이 등장했던 멤버도 함께 나오지 않으며" 규칙 적용
-                    // selected에 이미 있는 멤버들과 randomMember가 이전 라운드에서 같이 나왔던 적이 있는지 확인
-                    for (const existingMember of selected) {
-                        if (memberData[existingMember].previousRoundGroup.has(randomMember)) {
-                            canAdd = false;
-                            break;
-                        }
+                let canAdd = true;
+                // "같이 등장했던 멤버도 함께 나오지 않으며" 규칙 적용
+                // selected에 이미 있는 멤버들과 candidate가 이전 라운드에서 같이 나왔던 적이 있는지 확인
+                for (const existingMember of selected) {
+                    if (memberData[existingMember].previousRoundGroup.has(candidate) || 
+                        memberData[candidate].previousRoundGroup.has(existingMember)) { // 양방향 체크
+                        canAdd = false;
+                        break;
                     }
-
-                    if (canAdd) {
-                        selected.push(randomMember);
-                        // 현재 라운드에 이미 뽑힌 멤버와는 다시 나오지 않도록 eligible에서 제거 (현재 라운드 내 중복 방지)
-                        eligible = eligible.filter(name => name !== randomMember); 
-                    }
-                    attempts++;
                 }
 
-                // 만약 3명을 뽑지 못했으면, 규칙을 완화하여 최대한 채웁니다.
-                // (이 경우 "같이 등장했던 멤버가 함께 나오지 않는다"는 규칙이 깨질 수 있습니다.)
-                if (selected.length < membersPerRound) {
-                    const allEligibleRegardlessOfGroup = Object.keys(memberData).filter(name =>
-                        !memberData[name].eliminated && memberData[name].appearances < maxAppearances && !selected.includes(name)
-                    );
-                    const remainingToPick = allEligibleRegardlessOfGroup.filter(name => !selected.includes(name));
+                if (canAdd) {
+                    selected.push(candidate);
+                } else {
+                    // 추가할 수 없으면 eligible 뒤로 다시 보내서 다음 시도에 사용
+                    eligible.push(candidate);
+                }
+                attempts++;
+            }
 
-                    while (selected.length < membersPerRound && remainingToPick.length > 0) {
-                        const randomMember = remainingToPick.splice(Math.floor(Math.random() * remainingToPick.length), 1)[0];
-                        selected.push(randomMember);
-                    }
+            // 만약 3명을 뽑지 못했으면, 규칙을 완화하여 최대한 채웁니다.
+            // 이 경우 "같이 등장했던 멤버가 함께 나오지 않는다"는 규칙이 깨질 수 있습니다.
+            // 하지만 게임 진행을 위해 최소한의 멤버는 채워야 함.
+            if (selected.length < membersPerRound) {
+                const allRemainingEligible = Object.keys(memberData).filter(name =>
+                    !memberData[name].eliminated && memberData[name].appearances < maxAppearances && !selected.includes(name)
+                );
+                
+                // 부족한 수만큼 채움 (규칙 완화)
+                const remainingToPick = allRemainingEligible.filter(name => !selected.includes(name));
+                while (selected.length < membersPerRound && remainingToPick.length > 0) {
+                    const randomMember = remainingToPick.splice(Math.floor(Math.random() * remainingToPick.length), 1)[0];
+                    selected.push(randomMember);
                 }
             }
-            
+
+            // 최종적으로 뽑힌 멤버가 3명 미만이면 게임을 종료할 수 있음
+            if (selected.length < membersPerRound) {
+                // 게임 종료 로직 (더 이상 라운드 진행 불가)
+                alert("더 이상 라운드를 진행할 수 있는 멤버가 부족하여 게임을 종료합니다.");
+                gamePhase = 'results';
+                displayResults();
+                return;
+            }
+
             availableMembersForRound = selected;
             renderMembers();
         }
@@ -656,40 +632,30 @@
             currentRoundElement.textContent = currentRound;
             selectionOrder = []; // 새 라운드 시작 시 선택 순서 초기화
             memberSelectionDiv.innerHTML = ''; // 이전 멤버 카드 제거
-            tieBreakerInfoElement.style.display = 'none'; // 동점자 정보 숨김
-
-            // 게임 페이즈 전환 및 진행 로직
+            
+            // 게임 페이즈 전환 로직
             if (gamePhase === 'initialSelection') {
                 const nonEliminatedCount = Object.values(memberData).filter(m => !m.eliminated).length;
-                if (nonEliminatedCount <= initialSelectionTarget) {
+                if (nonEliminatedCount <= initialSelectionTarget && currentRound > 1) { // 최소 1라운드 진행 후 전환
                     gamePhase = 'finalSelection';
                     currentRound = 0; // 최종 선발 라운드 카운트 초기화
                     currentRoundElement.textContent = currentRound;
                     updateInstructionText();
-                    alert(`1차 선발이 완료되었습니다! 이제 최종 선발 16인을 가립니다.`);
-                }
-            } else if (gamePhase === 'finalSelection') {
-                const eligibleFinalMembers = getEligibleMembers('finalSelection');
-                // 최종 16인 내 점수 경쟁 중, 더 이상 3명을 뽑을 수 없으면 최종 동점자 확인 단계로 넘어감
-                if (eligibleFinalMembers.length < membersPerRound && currentRound > 0) { // 최소 한 라운드 진행 후 검사
-                    console.log("Final selection round candidates exhausted. Checking for internal tie-breakers.");
-                    checkFinalResultsForTieBreaker();
-                    return; // 라운드 진행 중단
-                } else if (currentRound > 30 && eligibleFinalMembers.length >= membersPerRound) { // 무한 루프 방지용 임시 라운드 제한
-                    console.log("Maximum final selection rounds reached. Checking for internal tie-breakers.");
-                    checkFinalResultsForTieBreaker();
+                    alert(`${initialSelectionTarget}인 선발 단계로 전환됩니다!`);
+                    // 최종 선발 페이즈의 첫 라운드 시작
+                    selectMembersForRound();
                     return;
                 }
-            } else if (gamePhase === 'internalTieBreak') {
-                if (tieBreakQueue.length === 0) {
-                    gamePhase = 'results'; // 모든 동점자 처리 완료
-                    displayResults();
-                    return;
-                }
-                currentTieBreakInfo = tieBreakQueue.shift(); // 큐에서 다음 동점자 그룹 가져오기
-                tieBreakerMembers = currentTieBreakInfo.members; // 해당 그룹 멤버들을 동점자 라운드 대상으로 설정
-                updateInstructionText(); // 동점자 라운드 안내 업데이트
+            } 
+            
+            // 모든 멤버가 3회 이상 등장했거나, 남은 멤버가 없으면 게임 종료
+            const canStillPlay = Object.values(memberData).some(m => !m.eliminated && m.appearances < maxAppearances);
+            if (!canStillPlay || Object.values(memberData).filter(m => !m.eliminated).length < membersPerRound) {
+                gamePhase = 'results';
+                displayResults();
+                return;
             }
+
             updateInstructionText();
             selectMembersForRound();
         }
@@ -718,33 +684,25 @@
                 return; // 이미 처리된 카드는 클릭 무시
             }
 
-            if (selectionOrder.includes(clickedMemberName)) {
-                // 이미 선택된 멤버를 다시 클릭하면 선택 취소 (마지막에 선택된 멤버만 취소)
-                if (selectionOrder[selectionOrder.length - 1] === clickedMemberName) {
-                    selectionOrder.pop(); // 마지막 선택 제거
+            // 선택 취소 로직 (가장 마지막에 선택된 것만 취소)
+            const indexInSelection = selectionOrder.indexOf(clickedMemberName);
+            if (indexInSelection !== -1) {
+                if (indexInSelection === selectionOrder.length - 1) { // 마지막 선택 멤버인 경우에만 취소
+                    selectionOrder.pop();
                     clickedCard.classList.remove('selected');
                     clickedCard.querySelector('.selection-rank').textContent = '';
                 }
                 return;
             }
 
-            let maxSelections = 0;
-            if (gamePhase === 'initialSelection' || gamePhase === 'finalSelection') {
-                maxSelections = 2; // 1순위, 2순위만 직접 선택
-            } else if (gamePhase === 'internalTieBreak') {
-                if (tieBreakerMembers.length === 2) {
-                    maxSelections = 1; // 2명 동점일 땐 1명만 선택
-                } else { // 3명 이상
-                    maxSelections = 2; // 1순위, 2순위 선택
-                }
-            }
+            const maxDirectSelections = 2; // 1순위, 2순위만 직접 선택
 
-            if (selectionOrder.length < maxSelections) {
+            if (selectionOrder.length < maxDirectSelections) {
                 selectionOrder.push(clickedMemberName);
                 clickedCard.classList.add('selected');
-                clickedCard.querySelector('.selection-rank').textContent = selectionOrder.length + 1; // 1부터 표시
+                clickedCard.querySelector('.selection-rank').textContent = selectionOrder.length; // 1순위:1, 2순위:2
 
-                if (selectionOrder.length === maxSelections) {
+                if (selectionOrder.length === maxDirectSelections) {
                     // 모든 직접 선택이 완료되면 다음 단계 진행 (자동 선택 및 점수 적용)
                     applyScoresAndProceed();
                 }
@@ -757,55 +715,37 @@
             // 모든 카드 클릭 비활성화
             document.querySelectorAll('.member-card').forEach(card => card.classList.add('processed'));
 
-            // 3순위 자동 선택 (일반 라운드)
-            if (gamePhase === 'initialSelection' || gamePhase === 'finalSelection') {
-                const unselectedMember = currentRoundMembers.find(name => !selectionOrder.includes(name));
-                if (unselectedMember) {
-                    selectionOrder.push(unselectedMember); // 3순위로 자동 추가
-                    // UI에는 3순위 표시 안함 (명시적 선택이 아니므로)
-                }
-
-                // 점수 부여
-                selectionOrder.forEach((name, index) => {
-                    if (index === 0) memberData[name].score += scores.mainRound.rank1; // 1순위 3점
-                    else if (index === 1) memberData[name].score += scores.mainRound.rank2; // 2순위 1점
-                    else if (index === 2) { // 3순위 자동선택된 멤버
-                        memberData[name].score += scores.mainRound.rank3; // 3순위 0점
-                        memberData[name].zeroScoreCount++; // 0점 받은 횟수 증가
-                    }
-                });
-
-                // 탈락 처리
-                currentRoundMembers.forEach(name => {
-                    if (memberData[name].zeroScoreCount >= 3) {
-                        memberData[name].eliminated = true; // 0점을 3번 받으면 탈락
-                    }
-                });
-
-            } else if (gamePhase === 'internalTieBreak') {
-                // 동점자 라운드 점수 처리
-                if (tieBreakerMembers.length === 2) {
-                    const selectedMember = selectionOrder[0];
-                    const unselectedMember = tieBreakerMembers.find(name => name !== selectedMember); // 자동 추가된 멤버
-
-                    memberData[selectedMember].score += scores.tieBreakRound.selected; // 선택받은 사람은 0.3점
-                    if (unselectedMember) {
-                        memberData[unselectedMember].score += scores.tieBreakRound.unselected; // 선택 못받은 사람은 0.1점
-                    }
-
-                } else if (tieBreakerMembers.length >= 3) {
-                    // 3명 이상 동점자 라운드: 1순위, 2순위 선택, 나머지 자동 3순위
-                    const rank1Member = selectionOrder[0];
-                    const rank2Member = selectionOrder[1];
-                    const rank3Member = tieBreakerMembers.find(name => !selectionOrder.includes(name)); // 자동 추가된 멤버
-
-                    memberData[rank1Member].score += scores.tieBreakRound.selected; // 1순위 0.3점
-                    memberData[rank2Member].score += scores.tieBreakRound.unselected; // 2순위 0.1점
-                    if (rank3Member) {
-                        memberData[rank3Member].score += scores.tieBreakRound.thirdRank;   // 3순위 0점
-                    }
-                }
+            // 3순위 자동 선택
+            const unselectedMember = currentRoundMembers.find(name => !selectionOrder.includes(name));
+            if (unselectedMember) {
+                selectionOrder.push(unselectedMember); // 3순위로 자동 추가
+                // UI에는 3순위 표시 안함 (명시적 선택이 아니므로)
             }
+
+            // 점수 부여 및 최고 순위 기록
+            currentRoundMembers.forEach(name => {
+                const rankIndex = selectionOrder.indexOf(name);
+                if (rankIndex === 0) { // 1순위
+                    memberData[name].score += scores.mainRound.rank1;
+                    memberData[name].highestRankAchievedInRound = Math.min(memberData[name].highestRankAchievedInRound, 1);
+                } else if (rankIndex === 1) { // 2순위
+                    memberData[name].score += scores.mainRound.rank2;
+                    memberData[name].highestRankAchievedInRound = Math.min(memberData[name].highestRankAchievedInRound, 2);
+                } else if (rankIndex === 2) { // 3순위 (자동)
+                    memberData[name].score += scores.mainRound.rank3; // 0점
+                    memberData[name].zeroScoreCount++; // 0점 받은 횟수 증가
+                    memberData[name].highestRankAchievedInRound = Math.min(memberData[name].highestRankAchievedInRound, 3);
+                } else { // 라운드에 나왔지만 선택 못된 경우 (이 경우는 발생하지 않아야 함, 3명 중 3명 선택이므로)
+                    // memberData[name].highestRankAchievedInRound = Math.min(memberData[name].highestRankAchievedInRound, 4);
+                }
+            });
+
+            // 탈락 처리
+            currentRoundMembers.forEach(name => {
+                if (memberData[name].zeroScoreCount >= 3) {
+                    memberData[name].eliminated = true; // 0점을 3번 받으면 탈락
+                }
+            });
 
             // 모든 멤버들의 등장 횟수 및 마지막 등장 라운드, 함께 등장했던 멤버 기록 업데이트
             currentRoundMembers.forEach(name => {
@@ -821,124 +761,38 @@
                 });
             });
 
-            // 잠시 딜레이 후 다음 라운드 시작
-            setTimeout(() => {
-                startNewRound();
-            }, 100); // 0.1초 후 다음 라운드 진행
+            // 딜레이 없이 바로 다음 라운드 시작
+            startNewRound();
         }
 
         function getSortedMembers(includeEliminated = true) {
             let sortable = [];
             for (let name in memberData) {
                 if (includeEliminated || !memberData[name].eliminated) {
-                    sortable.push({ name: name, score: memberData[name].score });
-                }
-            }
-            // 점수가 같으면 이름으로 정렬 (동점 시 순서 고정)
-            sortable.sort((a, b) => {
-                if (b.score === a.score) {
-                    return a.name.localeCompare(b.name);
-                }
-                return b.score - a.score;
-            });
-            return sortable;
-        }
-
-        function checkFinalResultsForTieBreaker() {
-            const sortedMembers = getSortedMembers(false); // 탈락자 제외
-            let final16List = []; // 최종 16인 목록
-            let tempTieBreakQueue = []; // 16인 선발 라인 동점자 처리를 위한 임시 큐
-
-            // 1단계: 16위 컷오프 동점자 처리 (16인 초과 방지)
-            if (sortedMembers.length > initialSelectionTarget) {
-                const cutoffScore = sortedMembers[initialSelectionTarget - 1].score;
-                const membersAtCutoff = sortedMembers.filter(m => m.score === cutoffScore);
-
-                // 16위권에 동점자가 여러 명 있을 경우 (예: 15위까지 다른 점수, 16,17,18위가 동점)
-                // 이 동점자들 중에서 initialSelectionTarget - (16위 이전까지의 확정된 멤버 수) 만큼 뽑아야 함
-                const definiteTopMembers = sortedMembers.filter(m => m.score > cutoffScore);
-                const neededFromTieGroup = initialSelectionTarget - definiteTopMembers.length;
-
-                if (membersAtCutoff.length > neededFromTieGroup) {
-                    console.log("16인 컷오프 동점자 발생:", membersAtCutoff.map(m=>m.name));
-                    // 필요한 인원보다 동점자가 많으면 동점자 라운드 생성
-                    tempTieBreakQueue.push({
-                        rank: -1, // 컷오프 동점자는 특정 순위가 아님
-                        members: membersAtCutoff.map(m => m.name),
-                        needed: neededFromTieGroup
+                    sortable.push({ 
+                        name: name, 
+                        score: memberData[name].score,
+                        highestRank: memberData[name].highestRankAchievedInRound // 동점 처리 기준 추가
                     });
                 }
             }
-
-            if (tempTieBreakQueue.length > 0) {
-                // 16인 컷오프 동점자 라운드를 먼저 진행
-                gamePhase = 'internalTieBreak';
-                tieBreakQueue = tempTieBreakQueue; // 큐에 추가
-                // 동점자 라운드 진행 시에는 currentRound를 유지하되, 별도 타이틀로 구분
-                currentRoundElement.textContent = "동점자"; 
-                startNewRound();
-                return;
-            } else {
-                // 16인 컷오프 동점자가 없거나 이미 처리된 경우 최종 16인 확정
-                final16List = sortedMembers.slice(0, initialSelectionTarget);
-            }
-
-            // 2단계: 최종 16인 내부 동점자 처리
-            // 이미 final16List가 16인으로 확정된 상태에서, 상위 순위 동점자 확인
-            const ranksToCheck = [1, 2, 3]; // 1위, 2위, 3위만 동점자 라운드 진행
-            for (let i = 0; i < ranksToCheck.length; i++) {
-                const currentRank = ranksToCheck[i];
-                if (final16List.length < currentRank) break; // 16인 미만이거나 해당 순위가 없는 경우
-
-                const memberAtRank = final16List[currentRank - 1];
-                if (!memberAtRank) continue;
-
-                const scoreAtRank = memberAtRank.score;
-                const tieGroup = final16List.filter(m => m.score === scoreAtRank);
-                
-                // 해당 순위에 동점자가 있고, 그 수가 해당 순위부터 다음 순위까지의 간격보다 클 경우 (예: 1위가 2명)
-                // 또는 동점자 그룹이 시작되는 인덱스가 현재 순위 인덱스와 일치하는 경우 (예: 1위가 A, B 동점)
-                const tieGroupStartIndex = final16List.findIndex(m => m.score === scoreAtRank);
-                
-                // 동점자 그룹의 크기가, 현재 순위에서 시작하여 다음 순위까지 할당될 수 있는 자리보다 많을 때
-                // 예를 들어, 1위가 2명인데 1위 자리는 1개일 때
-                if (tieGroup.length > 1 && tieGroupStartIndex <= currentRank - 1) { // 동점자가 있고, 해당 랭크에 걸쳐있음
-                    // 그리고 이 동점자 그룹이 현재 처리하려는 랭크에 명확히 걸쳐있어야 함 (예: 1등 결정인데 1등이 2명)
-                    // 현재 동점자 그룹 내에서 해당 순위의 정확한 위치를 찾아야 합니다.
-                    // 동점자 그룹이 시작하는 인덱스(tieGroupStartIndex)가 현재 순위보다 작거나 같고,
-                    // 동점자 그룹의 끝 인덱스가 현재 순위보다 크거나 같을 때
-                    const actualMembersForTieBreak = tieGroup.filter(m => m.score === scoreAtRank);
-
-                    // 이전에 이 동점자 그룹이 이미 처리되었는지 확인
-                    // 이 부분은 멤버들의 점수가 계속 바뀌므로 이전 기록만으로는 체크하기 어려움.
-                    // 대신, 동점자 큐에 이미 같은 멤버들로 구성된 라운드가 있는지 확인하는 식으로 방지해야 함.
-
-                    const existingInQueue = tieBreakQueue.some(item => 
-                        item.members.length === actualMembersForTieBreak.length && 
-                        item.members.every(name => actualMembersForTieBreak.map(m=>m.name).includes(name))
-                    );
-
-                    if (!existingInQueue) {
-                        console.log(`내부 동점자 발생 (${currentRank}위):`, actualMembersForTieBreak.map(m=>m.name));
-                        tieBreakQueue.push({
-                            rank: currentRank,
-                            members: actualMembersForTieBreak.map(m => m.name),
-                            needed: 1 // 동점자 라운드를 통해 해당 순위 1명만 결정
-                        });
-                    }
+            // 정렬 기준:
+            // 1. 점수가 높은 순
+            // 2. 점수가 같으면, 라운드별 최고 순위 (1위 > 2위 > 3위)가 높은 순 (highestRank 값은 낮을수록 좋음)
+            // 3. 2번도 같으면, 이름순 (알파벳/가나다)
+            sortable.sort((a, b) => {
+                if (b.score !== a.score) {
+                    return b.score - a.score; // 점수 내림차순
                 }
-            }
-
-            if (tieBreakQueue.length > 0) {
-                gamePhase = 'internalTieBreak';
-                currentRoundElement.textContent = "동점자"; // 동점자 라운드는 라운드 카운트 대신 '동점자' 표시
-                startNewRound();
-            } else {
-                gamePhase = 'results';
-                displayResults();
-            }
+                // 점수 같으면 최고 순위 비교 (낮을수록 우위)
+                if (a.highestRank !== b.highestRank) {
+                    return a.highestRank - b.highestRank; 
+                }
+                // 최고 순위도 같으면 이름 오름차순
+                return a.name.localeCompare(b.name);
+            });
+            return sortable;
         }
-
 
         function displayResults() {
             gameScreen.style.display = 'none';
@@ -951,11 +805,19 @@
             topMembersDisplay.innerHTML = '';
             for (let i = 0; i < Math.min(3, sortedMembers.length); i++) {
                 const member = sortedMembers[i];
-                const rank = i + 1;
+                // 동점자가 있으면 공동 순위로 표시
+                let rank = i + 1;
+                if (i > 0 && sortedMembers[i].score === sortedMembers[i-1].score && sortedMembers[i].highestRank === sortedMembers[i-1].highestRank) {
+                    // 이전 멤버와 점수, 최고 랭크가 같으면 같은 순위로 표시
+                    rank = '공동 ' + (i); // 이전 순위와 동일하게 표시
+                } else {
+                    rank = i + 1;
+                }
+                
                 const card = document.createElement('div');
-                card.classList.add('top-member-card', `rank${rank}`);
+                card.classList.add('top-member-card', `rank${i + 1}`); // CSS는 1,2,3위 그대로 사용
                 card.innerHTML = `
-                    <div class="rank-label">${rank}위</div>
+                    <div class="rank-label">${typeof rank === 'number' ? `${rank}위` : rank}</div>
                     <img src="./images/${member.name}.png" alt="${member.name}">
                     <p>${member.name}</p>
                     <span class="score">점수: ${member.score.toFixed(1)}</span>
@@ -968,8 +830,18 @@
             const finalCount = Math.min(initialSelectionTarget, sortedMembers.length); // 최대 16명
             for (let i = 0; i < finalCount; i++) {
                 const member = sortedMembers[i];
+                let rankText = `${i + 1}위`;
+                if (i > 0 && sortedMembers[i].score === sortedMembers[i-1].score && sortedMembers[i].highestRank === sortedMembers[i-1].highestRank) {
+                    // 이전 멤버와 점수, 최고 랭크가 같으면 공동 순위로 표시
+                    let prevRank = finalSelectionList.children[i-1].textContent.split('위')[0];
+                    if (prevRank.includes('공동')) {
+                        rankText = prevRank;
+                    } else {
+                        rankText = `공동 ${i}위`;
+                    }
+                }
                 const listItem = document.createElement('li');
-                listItem.textContent = `${i + 1}위: ${member.name} (${member.score.toFixed(1)}점)`;
+                listItem.textContent = `${rankText}: ${member.name} (${member.score.toFixed(1)}점)`;
                 finalSelectionList.appendChild(listItem);
             }
             document.getElementById('finalSelectionListTitle').textContent = `💖 최종 선발 ${finalCount}인 💖`;
@@ -983,7 +855,11 @@
             textContent += "--- Top 3 ---\n";
             for (let i = 0; i < Math.min(3, sortedMembers.length); i++) {
                 const member = sortedMembers[i];
-                textContent += `${i + 1}위: ${member.name} (${member.score.toFixed(1)}점)\n`;
+                let rank = i + 1;
+                if (i > 0 && sortedMembers[i].score === sortedMembers[i-1].score && sortedMembers[i].highestRank === sortedMembers[i-1].highestRank) {
+                    rank = `공동 ${i}`; 
+                }
+                textContent += `${typeof rank === 'number' ? `${rank}위` : rank}: ${member.name} (${member.score.toFixed(1)}점)\n`;
             }
             textContent += "\n";
 
@@ -991,7 +867,16 @@
             const finalCount = Math.min(initialSelectionTarget, sortedMembers.length);
             for (let i = 0; i < finalCount; i++) {
                 const member = sortedMembers[i];
-                textContent += `${i + 1}위: ${member.name} (${member.score.toFixed(1)}점)\n`;
+                let rankText = `${i + 1}위`;
+                if (i > 0 && sortedMembers[i].score === sortedMembers[i-1].score && sortedMembers[i].highestRank === sortedMembers[i-1].highestRank) {
+                    let prevRank = finalSelectionList.children[i-1].textContent.split('위')[0];
+                    if (prevRank.includes('공동')) {
+                        rankText = prevRank;
+                    } else {
+                        rankText = `공동 ${i}위`;
+                    }
+                }
+                textContent += `${rankText}: ${member.name} (${member.score.toFixed(1)}점)\n`;
             }
 
             const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
