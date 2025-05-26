@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MY HKT48 선발</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -26,7 +27,7 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
             text-align: center;
             width: 100%;
-            max-width: 1020px; /* 320px * 3 + 20px * 2 = 960 + 40 = 1000px. 여유있게 1020px로 설정 */
+            max-width: 820px; /* 250px * 3 + 20px * 2 = 750 + 40 = 790px. 여유있게 820px로 설정 */
             box-sizing: border-box;
             position: relative;
         }
@@ -64,8 +65,8 @@
             border: 2px solid #ffccbc;
             border-radius: 15px;
             padding: 5px; /* 카드 패딩 유지 */
-            width: 320px; /* 카드 크기 및 이미지 크기 320px로 통일 */
-            min-width: 320px; /* 카드가 더 이상 줄어들지 않도록 최소 너비 설정 */
+            width: 250px; /* 카드 크기 및 이미지 크기 250px로 통일 */
+            min-width: 250px; /* 카드가 더 이상 줄어들지 않도록 최소 너비 설정 */
             flex-shrink: 0; /* 부모 컨테이너가 작아져도 카드가 줄어들지 않게 함 */
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
             cursor: pointer;
@@ -93,8 +94,8 @@
         }
 
         .member-card img {
-            width: 320px; /* 이미지 크기 320px로 변경 */
-            height: 320px; /* 이미지 크기 320px로 변경 */
+            width: 250px; /* 이미지 크기 250px로 변경 */
+            height: 250px; /* 이미지 크기 250px로 변경 */
             border-radius: 50%;
             object-fit: cover;
             margin-bottom: 15px;
@@ -193,8 +194,9 @@
         }
         .top-members {
             display: flex;
-            justify-content: center;
-            gap: 30px;
+            justify-content: center; /* 가운데 정렬 */
+            align-items: flex-end; /* 아래쪽으로 정렬하여 1위가 가운데 정렬된 채로 좌우 멤버보다 위로 올라오게 */
+            gap: 20px; /* 간격 조정 */
             margin-bottom: 40px;
             flex-wrap: wrap;
         }
@@ -204,26 +206,53 @@
             padding: 20px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             text-align: center;
-            width: 200px;
             box-sizing: border-box;
             position: relative;
+            transition: transform 0.3s ease, border-color 0.3s ease;
         }
-        .top-member-card.rank1 { border: 4px solid #FFD700; background-color: #FFFACD; }
-        .top-member-card.rank2 { border: 4px solid #C0C0C0; background-color: #E0E0E0; }
-        .top-member-card.rank3 { border: 4px solid #CD7F32; background-color: #D2B48C; }
+        /* 1위 카드 스타일 (10% 더 크게) */
+        .top-member-card.rank1 {
+            width: 220px; /* 1위 카드 너비 (이미지 165px + 패딩 40px + 보더 8px = 213px, 여유있게) */
+            height: auto; /* 내용에 따라 높이 조절 */
+            border: 4px solid #FFD700; 
+            background-color: #FFFACD;
+            transform: translateY(-20px); /* 1위 카드만 위로 살짝 올림 */
+            order: 2; /* flex 순서: 1위가 가운데 오도록 */
+        }
+        .top-member-card.rank1 img {
+            width: 165px; /* 1위 이미지 크기 (2,3위 150px 대비 10% 증가) */
+            height: 165px;
+        }
 
-        .top-member-card img {
-            width: 150px;
+        /* 2, 3위 카드 스타일 (기준 크기) */
+        .top-member-card.rank2, .top-member-card.rank3 {
+            width: 200px; /* 2,3위 카드 크기 (이미지 150px + 패딩 40px + 보더 8px = 198px, 여유있게) */
+            height: auto; /* 내용에 따라 높이 조절 */
+            border: 4px solid #C0C0C0; 
+            background-color: #E0E0E0;
+            order: 1; /* 2위가 왼쪽 */
+        }
+        .top-member-card.rank3 {
+            border: 4px solid #CD7F32; 
+            background-color: #D2B48C;
+            order: 3; /* 3위가 오른쪽 */
+        }
+        .top-member-card.rank2 img, .top-member-card.rank3 img {
+            width: 150px; /* 2,3위 이미지 크기 */
             height: 150px;
+        }
+        
+        .top-member-card img {
             border-radius: 50%;
             object-fit: cover;
             margin-bottom: 15px;
-            border: 3px solid #ad1457;
+            /* border: 3px solid #ad1457; */ /* 테두리 제거 */
         }
         .top-member-card p {
-            font-size: 1.4em;
+            margin: 0;
             font-weight: bold;
             color: #ad1457;
+            font-size: 1.4em;
             margin-bottom: 5px;
         }
         .top-member-card .score {
@@ -280,6 +309,13 @@
         .restart-button-group {
             margin-top: 40px;
             text-align: center;
+            display: flex;
+            flex-direction: column; /* 버튼들을 세로로 정렬 */
+            align-items: center;
+            gap: 15px; /* 버튼 간격 */
+        }
+        .restart-button-group button {
+            width: 250px; /* 버튼 너비 통일 */
         }
 
         /* 모바일 반응형 */
@@ -303,13 +339,13 @@
                 gap: 15px;
             }
             .member-card {
-                width: 280px; /* 모바일에서 카드 너비 재조정 */
-                min-width: 280px; /* 모바일에서도 줄어들지 않게 설정 */
+                width: 250px; /* 모바일에서 카드 너비 */
+                min-width: 250px; 
                 padding: 10px;
             }
             .member-card img {
-                width: 250px; /* 모바일에서는 이미지 크기 재조정 */
-                height: 250px;
+                width: 220px; /* 모바일에서는 이미지 크기 */
+                height: 220px;
             }
             .button-group {
                 flex-direction: column;
@@ -321,18 +357,31 @@
                 font-size: 1.1em;
             }
             .top-members {
-                flex-direction: column;
+                flex-direction: column; /* 모바일에서는 다시 세로로 */
                 align-items: center;
                 gap: 20px;
             }
             .top-member-card {
-                width: 90%;
+                width: 90%; /* 모바일에서 카드 너비 */
+                transform: none !important; /* 모바일에서는 transform 제거 */
+                order: initial !important; /* 모바일에서는 order 초기화 */
+            }
+            .top-member-card.rank1 img {
+                width: 150px; 
+                height: 150px;
+            }
+            .top-member-card.rank2 img, .top-member-card.rank3 img {
+                width: 120px;
+                height: 120px;
             }
             #startGameButton {
                 position: static;
                 transform: none;
                 width: 90%;
                 margin: 20px auto;
+            }
+            .restart-button-group button { 
+                width: 90%; /* 모바일에서 재시작 버튼 너비 */
             }
         }
     </style>
@@ -367,6 +416,8 @@
                     </ul>
             </div>
             <div class="restart-button-group">
+                <button id="downloadTextResultButton">결과 저장 (텍스트)</button>
+                <button id="downloadImageResultButton">결과 저장 (이미지)</button>
                 <button id="restartGameButton">새 게임 시작</button>
             </div>
         </div>
@@ -378,7 +429,7 @@
             "모리사키 사아야", "사카모토 리노", "시부이 미나", "아오키 히나코", "아키요시 유카","야나세 레이아","야마우치 유나","야마카와 마리아",
             "야스이 히나", "에구치 코코하", "에우라 유카", "오오바 리사키", "오오우치 린카", "요시다 메이", "이마무라 마리아", "이시마츠 유이나",
             "이시바시 이부키", "이시이 아야네", "이시카와 아미유", "이시하라 한나", "이자와 미유", "이지마 리리아", "이치무라 아이리", "이쿠노 리나",
-            "지토우에 네네", // '지토우에 네네'로 변경 완료!
+            "지토우에 네네", 
             "츠루카와 나치", "츠츠미 후카", "카타히라 사라", "쿠레 유나", "쿠리야마 리나", "쿠리하라 사에", "키타가와 히이로",
             "타치바나 코코로", "타케모토 쿠루미", "토요나가 아키", "후지노 코코하", "후쿠이 카렌"
         ];
@@ -388,7 +439,7 @@
         let currentRound = 0;
         const membersPerRound = 3;
         let selectionOrder = [];
-        let playedCombinations = new Set(); // 3인 조합만 기록
+        let playedCombinations = new Set(); 
 
         const gameScreen = document.getElementById('gameScreen');
         const resultsScreen = document.getElementById('resultsScreen');
@@ -399,11 +450,15 @@
         const topMembersDisplay = document.getElementById('topMembersDisplay');
         const finalSelectionList = document.getElementById('finalSelectionList');
         const restartGameButton = document.getElementById('restartGameButton');
+        const downloadTextResultButton = document.getElementById('downloadTextResultButton'); 
+        const downloadImageResultButton = document.getElementById('downloadImageResultButton'); 
         const instructionText = document.getElementById('instructionText');
 
         startGameButton.addEventListener('click', initializeGame);
         resetGameButton.addEventListener('click', initializeGame);
         restartGameButton.addEventListener('click', initializeGame);
+        downloadTextResultButton.addEventListener('click', downloadTextResults); 
+        downloadImageResultButton.addEventListener('click', downloadImageResults); 
 
         function initializeGame() {
             for (const name of memberNames) {
@@ -436,7 +491,6 @@
         function getUniqueRoundMembers() {
             const candidates = getCandidateMembersForRound();
             
-            // 16인 미만이 남으면 게임 종료 (라운드 시작 전 확인)
             const nonEliminatedMembers = memberNames.filter(name => !memberData[name].eliminated);
             if (nonEliminatedMembers.length < 16) { 
                 console.log("남은 멤버가 16인 미만이므로 게임을 종료합니다.");
@@ -444,7 +498,6 @@
                 return []; 
             }
 
-            // 라운드에 필요한 멤버가 3명 미만이면 (더 이상 뽑을 수 없으면) 게임 종료
             if (candidates.length < membersPerRound) {
                 console.log("다음 라운드에 등장할 멤버 후보가 부족합니다. 게임을 종료합니다.");
                 endGame();
@@ -453,18 +506,15 @@
 
             let roundMembers = [];
             let attempts = 0;
-            const maxAttempts = 20000; // 시도 횟수 더 증가! (충분한 조합을 찾도록)
+            const maxAttempts = 20000; 
 
             while (roundMembers.length < membersPerRound && attempts < maxAttempts) {
                 const tempShuffle = shuffleArray([...candidates]);
                 const potentialRound = tempShuffle.slice(0, membersPerRound);
                 
-                // 현재 라운드 멤버가 모두 3회 등장하지 않았는지 확인
                 const isValidCombination = potentialRound.every(name => memberData[name].appearances < 3);
-                // 3인 조합 키 생성 (정렬하여 순서 상관없이 동일한 조합으로 인식)
                 const combinationKey = [...potentialRound].sort().join('-');
 
-                // 3회 등장 제한 규칙과 같은 3인 조합 규칙만 검사
                 if (isValidCombination && !playedCombinations.has(combinationKey)) {
                     roundMembers = potentialRound;
                     playedCombinations.add(combinationKey);
@@ -472,13 +522,10 @@
                 attempts++;
             }
 
-            // maxAttempts를 초과해도 조합을 찾지 못했다면, 규칙을 완화하여 강제로 뽑음
             if (roundMembers.length < membersPerRound) {
                 console.warn("경고: 엄격한 규칙(3회 등장 제한, 같은 3인 조합 2번 나오지 않음)을 준수하며 멤버를 찾기 어려워 강제로 선택합니다.");
-                // 가장 적게 등장했던 멤버들 중 3명 선택 (점수보다는 등장 횟수로 정렬)
                 const sortedCandidates = candidates.sort((a, b) => memberData[a].appearances - memberData[b].appearances);
                 roundMembers = sortedCandidates.slice(0, membersPerRound);
-                // 강제 선택된 조합도 기록하여 다음 라운드에서 중복되지 않도록 함 (규칙 완화 적용)
                 playedCombinations.add([...roundMembers].sort().join('-'));
             }
             return roundMembers;
@@ -491,7 +538,6 @@
 
             const membersForThisRound = getUniqueRoundMembers();
             if (membersForThisRound.length === 0) { 
-                // getUniqueRoundMembers()에서 endGame()을 호출했을 것이므로 추가 호출 불필요
                 return;
             }
 
@@ -510,7 +556,6 @@
                 card.addEventListener('click', () => handleCardClick(card, name));
                 memberSelectionDiv.appendChild(card);
 
-                // 출연 횟수 증가 (라운드에 표시될 때마다)
                 memberData[name].appearances++; 
             });
         }
@@ -580,7 +625,6 @@
                 console.log(`${selectionOrder[2]} 멤버가 3위 3회로 탈락했습니다.`);
             }
 
-            // 현재 라운드 멤버들이 시각적으로 처리되었음을 표시
             document.querySelectorAll('.member-card').forEach(card => {
                 card.classList.add('processed'); 
                 card.classList.remove('selected'); 
@@ -597,35 +641,62 @@
             resetGameButton.style.display = 'none'; 
             instructionText.style.display = 'none'; 
 
-            // 탈락하지 않은 멤버들만 대상으로 점수 순으로 정렬
             const sortedMembers = Object.entries(memberData)
                 .filter(([name, data]) => !data.eliminated) 
                 .sort(([, a], [, b]) => b.score - a.score); 
 
-            // 최종 선발 16인
             const finalTop16 = sortedMembers.slice(0, 16);
-            // 상위 3인 (결과 화면에 크게 표시)
+            
             const top3 = finalTop16.slice(0, 3); 
 
             topMembersDisplay.innerHTML = '';
-            top3.forEach((memberArray, index) => {
+
+            const topMembersOrderedForDisplay = [];
+            let rank1Member = null;
+            let rank2Member = null;
+            let rank3Member = null;
+
+            if (top3.length > 0) {
+                rank1Member = top3[0];
+            }
+            if (top3.length > 1) {
+                rank2Member = top3[1];
+            }
+            if (top3.length > 2) {
+                rank3Member = top3[2];
+            }
+
+            // 2위 - 1위 - 3위 순서로 배열에 추가
+            if (rank2Member) topMembersOrderedForDisplay.push(rank2Member);
+            if (rank1Member) topMembersOrderedForDisplay.push(rank1Member);
+            if (rank3Member) topMembersOrderedForDisplay.push(rank3Member);
+            
+            topMembersOrderedForDisplay.forEach((memberArray) => {
                 const memberName = memberArray[0];
                 const data = memberArray[1];
 
                 const card = document.createElement('div');
                 card.classList.add('top-member-card');
-                if (index === 0) card.classList.add('rank1');
-                else if (index === 1) card.classList.add('rank2');
-                else if (index === 2) card.classList.add('rank3');
+                let rankClass = '';
+                // 실제 순위에 따라 클래스 부여
+                if (memberName === top3[0][0]) { 
+                    rankClass = 'rank1';
+                } else if (top3.length > 1 && memberName === top3[1][0]) {
+                    rankClass = 'rank2';
+                } else if (top3.length > 2 && memberName === top3[2][0]) {
+                    rankClass = 'rank3';
+                }
+                card.classList.add(rankClass);
 
                 card.innerHTML = `
-                    <div class="rank-label">${index + 1}위</div>
+                    <div class="rank-label">${rankClass.replace('rank','') + '위'}</div>
                     <img src="./images/${memberName}.png" alt="${memberName}">
                     <p>${memberName}</p>
                     <span class="score">${data.score}점</span>
                 `;
                 topMembersDisplay.appendChild(card);
             });
+
 
             finalSelectionList.innerHTML = '';
             finalTop16.forEach(([name, data]) => {
@@ -634,6 +705,68 @@
                 finalSelectionList.appendChild(listItem);
             });
         }
+
+        // 텍스트 결과 저장 기능
+        function downloadTextResults() {
+            const sortedMembers = Object.entries(memberData)
+                .filter(([name, data]) => !data.eliminated)
+                .sort(([, a], [, b]) => b.score - a.score);
+
+            const finalTop16 = sortedMembers.slice(0, 16);
+
+            let resultText = "--- HKT48 최종 선발 16인 결과 ---\n\n";
+            resultText += `총 라운드: ${currentRound} 라운드\n\n`;
+
+            resultText += "🏆 최종 선발 16인 🏆\n";
+            finalTop16.forEach((member, index) => {
+                resultText += `${index + 1}. ${member[0]} (${member[1].score}점)\n`;
+            });
+            resultText += "\n";
+
+            resultText += "--- 모든 멤버 상세 점수 및 통계 ---\n";
+            Object.entries(memberData)
+                .sort(([, a], [, b]) => b.score - a.score) 
+                .forEach(([name, data]) => {
+                    resultText += `${name}: ${data.score}점, 등장 횟수: ${data.appearances}회, 3위 횟수: ${data.thirdPlaceCount}회, 탈락 여부: ${data.eliminated ? '탈락' : '잔류'}\n`;
+                });
+
+            const blob = new Blob([resultText], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `HKT48_Senbatsu_Result_${new Date().toISOString().slice(0,10)}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 이미지 결과 저장 기능 (html2canvas 사용)
+        async function downloadImageResults() {
+            const resultsScreenElement = document.getElementById('resultsScreen');
+            // 'restart-button-group'을 잠시 숨겨서 이미지에 포함되지 않도록 함
+            const restartButtonGroup = resultsScreenElement.querySelector('.restart-button-group');
+            restartButtonGroup.style.display = 'none'; 
+
+            try {
+                const canvas = await html2canvas(resultsScreenElement, {
+                    scale: 2, 
+                    useCORS: true 
+                });
+                const image = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = image;
+                link.download = `HKT48_Senbatsu_Result_${new Date().toISOString().slice(0,10)}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error("이미지 저장 실패:", error);
+                alert("이미지 저장에 실패했습니다. 이미지가 로드되지 않았거나 문제가 발생했습니다. 브라우저 콘솔을 확인해주세요.");
+            } finally {
+                // 숨겼던 버튼 그룹 다시 표시
+                restartButtonGroup.style.display = 'flex'; 
+            }
+        }
+
 
         document.addEventListener('DOMContentLoaded', () => {
             gameScreen.style.display = 'none';
