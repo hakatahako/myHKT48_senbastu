@@ -160,7 +160,7 @@
             transform: translateY(-3px);
             box-shadow: 0 6px 12px rgba(0,0,0,0.2);
         }
-        #startGameButton {
+        #startGameButton { /* 이 버튼은 이제 초기 로딩 시에만 보임 */
             background-color: #4CAF50;
             color: white;
             margin-top: 40px;
@@ -175,7 +175,7 @@
         #resetGameButton {
             background-color: #f44336;
             color: white;
-            display: none;
+            /* display: none; 초기 로딩 시에만 보이고 게임 시작 후에는 사라지도록 설정 */
             margin-top: 20px;
         }
         #resetGameButton:hover {
@@ -200,14 +200,14 @@
             display: flex;
             justify-content: center; /* 가운데 정렬 */
             align-items: flex-end; /* 아래쪽으로 정렬하여 1위가 가운데 정렬된 채로 좌우 멤버보다 위로 올라오게 */
-            gap: 20px; /* 간격 조정 */
+            gap: 30px; /* 👈 이미지 크기 증가에 맞춰 간격 조정 */
             margin-bottom: 40px;
             flex-wrap: wrap;
         }
         .top-member-card {
             background-color: #fdf3f7;
             border-radius: 15px;
-            padding: 20px;
+            padding: 30px; /* 👈 패딩 늘림 */
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             text-align: center;
             box-sizing: border-box;
@@ -216,22 +216,21 @@
         }
         /* 1위 카드 스타일 (2,3위보다 10% 더 크게) */
         .top-member-card.rank1 {
-            /* 이미지 150px (2,3위) * 1.1 = 165px */
-            width: calc(165px + 40px + 8px); /* 이미지 + 패딩 + 보더 = 약 213px */
+            width: calc(247.5px + 60px + 8px); /* 👈 이미지 247.5px + 패딩 30*2px + 보더 4*2px = 약 315.5px */
             height: auto; 
             border: 4px solid #FFD700; 
             background-color: #FFFACD;
-            transform: translateY(-20px); /* 1위 카드만 위로 살짝 올림 */
+            transform: translateY(-30px); /* 👈 1위 카드만 위로 살짝 올림 (더 높게) */
             order: 2; /* flex 순서: 1위가 가운데 오도록 */
         }
         .top-member-card.rank1 img {
-            width: 165px; 
-            height: 165px;
+            width: 247.5px; /* 👈 이미지 1.5배 */
+            height: 247.5px; /* 👈 이미지 1.5배 */
         }
 
         /* 2, 3위 카드 스타일 (기준 크기) */
         .top-member-card.rank2, .top-member-card.rank3 {
-            width: calc(150px + 40px + 8px); /* 이미지 + 패딩 + 보더 = 약 198px */
+            width: calc(225px + 60px + 8px); /* 👈 이미지 225px + 패딩 30*2px + 보더 4*2px = 약 293px */
             height: auto; 
             border: 4px solid #C0C0C0; 
             background-color: #E0E0E0;
@@ -243,15 +242,14 @@
             order: 3; /* 3위가 오른쪽 */
         }
         .top-member-card.rank2 img, .top-member-card.rank3 img {
-            width: 150px; 
-            height: 150px;
+            width: 225px; /* 👈 이미지 1.5배 */
+            height: 225px; /* 👈 이미지 1.5배 */
         }
         
         .top-member-card img {
             border-radius: 50%;
             object-fit: cover;
             margin-bottom: 15px;
-            /* 테두리 제거 */
         }
         .top-member-card p {
             margin: 0;
@@ -372,13 +370,14 @@
                 transform: none !important; /* 모바일에서는 transform 제거 */
                 order: initial !important; /* 모바일에서는 order 초기화 */
             }
+            /* 모바일에서 1위, 2/3위 이미지 크기 다시 조정 (너무 커지는 것 방지) */
             .top-member-card.rank1 img {
-                width: 150px; 
-                height: 150px;
+                width: 180px; /* 모바일에서 조금 더 작게 */
+                height: 180px;
             }
             .top-member-card.rank2 img, .top-member-card.rank3 img {
-                width: 120px;
-                height: 120px;
+                width: 150px; /* 모바일에서 조금 더 작게 */
+                height: 150px;
             }
             #startGameButton {
                 position: static;
@@ -409,8 +408,6 @@
                 <button id="resetGameButton">게임 초기화</button>
             </div>
         </div>
-
-        <button id="startGameButton">게임 시작</button>
 
         <div id="resultsScreen" class="results-screen">
             <h2 id="resultsScreenTitle">🎉 최종 선발 결과! 🎉</h2>
@@ -452,7 +449,7 @@
         const resultsScreen = document.getElementById('resultsScreen');
         const currentRoundSpan = document.getElementById('currentRound');
         const memberSelectionDiv = document.getElementById('memberSelection');
-        const startGameButton = document.getElementById('startGameButton');
+        // const startGameButton = document.getElementById('startGameButton'); // 이제 사용하지 않음
         const resetGameButton = document.getElementById('resetGameButton');
         const topMembersDisplay = document.getElementById('topMembersDisplay');
         const finalSelectionList = document.getElementById('finalSelectionList');
@@ -464,7 +461,7 @@
         const finalSelectionListTitle = document.getElementById('finalSelectionListTitle');
 
 
-        startGameButton.addEventListener('click', initializeGame);
+        // startGameButton.addEventListener('click', initializeGame); // 이제 사용하지 않음
         resetGameButton.addEventListener('click', initializeGame);
         restartGameButton.addEventListener('click', initializeGame);
         downloadTextResultButton.addEventListener('click', downloadTextResults); 
@@ -474,7 +471,8 @@
             // 모든 멤버 데이터 초기화
             memberData = {}; 
             for (const name of memberNames) {
-                memberData[name] = { score: 0, appearances: 0, thirdPlaceCount: 0, eliminated: false };
+                // thirdPlaceCountForElimination: 3위 0점을 몇 번 받았는지 카운트 (탈락 조건용)
+                memberData[name] = { score: 0, appearances: 0, thirdPlaceCountForElimination: 0, eliminated: false };
             }
             currentRound = 0;
             playedCombinations = new Set(); 
@@ -483,7 +481,7 @@
 
             gameScreen.style.display = 'block';
             resultsScreen.style.display = 'none';
-            startGameButton.style.display = 'none';
+            // startGameButton.style.display = 'none'; // 이제 사용하지 않음
             resetGameButton.style.display = 'block';
             instructionText.style.display = 'block'; 
 
@@ -505,27 +503,26 @@
             if (gamePhase === 'initialSelection') {
                 candidates = memberNames.filter(name => memberData[name].appearances < 3 && !memberData[name].eliminated);
                 
-                // 1차 선발 시 현재 잔류 멤버 수 확인
                 const nonEliminatedMembers = memberNames.filter(name => !memberData[name].eliminated);
-                // 잔류 멤버가 16명 이하가 되면 1차 선발 종료
-                if (nonEliminatedMembers.length <= 16 && currentRound > 0) { // 최소 1라운드 이상 진행 후
+                // 1차 선발 종료 조건: 잔류 멤버가 16명 이하가 되고, 라운드 수가 1 이상일 때
+                // 또는 더 이상 라운드를 진행할 멤버가 없을 때 (membersForThisRound.length === 0일 때 displayFinalResults 호출로 이어짐)
+                if (nonEliminatedMembers.length <= 16 && currentRound > 0) { 
                     console.log(`잔류 멤버가 ${nonEliminatedMembers.length}명 이므로 1차 선발을 종료합니다.`);
                     endInitialSelection(); 
                     return []; 
                 }
 
             } else if (gamePhase === 'finalSelection') {
-                candidates = finalTop16Names.filter(name => memberData[name].appearances < 3); // 결선에서는 탈락 없음
+                candidates = finalTop16Names.filter(name => memberData[name].appearances < 3); // 결선에서는 0점 탈락으로 인한 eliminated는 없음
             }
             
             // 더 이상 등장시킬 멤버가 없으면 결과 표시 (어떤 단계든)
             if (candidates.length < membersPerRound) {
                 console.log(`다음 라운드에 등장할 멤버 후보가 부족합니다. 현재 단계: ${gamePhase}`);
                 if (gamePhase === 'initialSelection') {
-                    // 이 경우는 사실상 발생하지 않음 (16인 이하 되면 endInitialSelection에서 처리)
-                    endInitialSelection(); 
+                    endInitialSelection(); // 1차 선발 강제 종료
                 } else { // finalSelection 단계
-                    displayFinalResults(); 
+                    displayFinalResults(); // 최종 결과 표시
                 }
                 return [];
             }
@@ -538,7 +535,6 @@
                 const tempShuffle = shuffleArray([...candidates]);
                 const potentialRound = tempShuffle.slice(0, membersPerRound);
                 
-                // 같은 조합 방지 및 3회 등장 제한 (최종 선발에서도 적용)
                 const isValidCombination = potentialRound.every(name => memberData[name].appearances < 3);
                 const combinationKey = [...potentialRound].sort().join('-');
 
@@ -564,7 +560,7 @@
             currentRoundSpan.textContent = currentRound;
             selectionOrder = []; 
 
-            const membersForThisRound = getCandidateMembersForRound(); // getUniqueRoundMembers -> getCandidateMembersForRound 로 변경
+            const membersForThisRound = getCandidateMembersForRound();
             if (membersForThisRound.length === 0) { 
                 return; 
             }
@@ -584,10 +580,7 @@
                 card.addEventListener('click', () => handleCardClick(card, name));
                 memberSelectionDiv.appendChild(card);
 
-                // appearance 카운트는 라운드 시작 시에만 증가
-                // 단, 최종 선발 단계에서는 appearances가 0으로 초기화되지 않으므로, 이 시점에서 증가시키는 것은 
-                // 전체 등장 횟수(3회 제한)를 유지하는 데 도움이 됩니다.
-                // 이미 3회 이상 등장한 멤버는 getCandidateMembersForRound에서 걸러지므로 문제 없음.
+                // 라운드 시작 시 appearance 카운트 증가
                 memberData[name].appearances++; 
             });
         }
@@ -607,7 +600,7 @@
                     alert("선택은 가장 마지막에 클릭한 멤버부터 해제할 수 있습니다.");
                 }
             } else {
-                if (selectionOrder.length < 2) { 
+                if (selectionOrder.length < 2) { // 1위와 2위만 직접 선택
                     clickedCard.classList.add('selected');
                     selectionOrder.push(memberName);
                     const rankSpan = clickedCard.querySelector('.selection-rank');
@@ -625,7 +618,11 @@
                 
                 if (thirdPlaceCard) {
                     const thirdPlaceName = thirdPlaceCard.dataset.name;
-                    selectionOrder.push(thirdPlaceName); 
+                    selectionOrder.push(thirdPlaceName); // 3위 자동 선택 및 추가
+                    // 3위 카드에 선택 표시
+                    thirdPlaceCard.classList.add('selected');
+                    const rankSpan = thirdPlaceCard.querySelector('.selection-rank');
+                    if (rankSpan) rankSpan.textContent = selectionOrder.length; 
                 }
 
                 document.querySelectorAll('.member-card').forEach(card => {
@@ -647,15 +644,17 @@
         }
 
         function applyScoresAndProceed() {
-            memberData[selectionOrder[0]].score += 3;
-            memberData[selectionOrder[1]].score += 2;
-            memberData[selectionOrder[2]].score += 1; 
+            // 새로운 점수 체계 적용: 1위 2.5점, 2위 1점, 3위 0점
+            memberData[selectionOrder[0]].score += 2.5; // 1순위
+            memberData[selectionOrder[1]].score += 1;   // 2순위
+            // memberData[selectionOrder[2]].score += 0; // 3순위는 0점이므로 점수 추가 없음
 
-            memberData[selectionOrder[2]].thirdPlaceCount++;
-            // 1차 선발에서만 3위 3회 탈락 규칙 적용
-            if (memberData[selectionOrder[2]].thirdPlaceCount >= 3 && gamePhase === 'initialSelection') {
+            // 3순위 (0점) 받은 멤버의 횟수 증가
+            memberData[selectionOrder[2]].thirdPlaceCountForElimination++;
+            // 3순위 (0점) 3회 받으면 해당 멤버 완전 제외
+            if (memberData[selectionOrder[2]].thirdPlaceCountForElimination >= 3) {
                 memberData[selectionOrder[2]].eliminated = true;
-                console.log(`${selectionOrder[2]} 멤버가 3위 3회로 탈락했습니다.`);
+                console.log(`${selectionOrder[2]} 멤버가 3순위(0점) 3회로 제외되었습니다.`);
             }
 
             document.querySelectorAll('.member-card').forEach(card => {
@@ -674,10 +673,8 @@
                     startNextRound();
                 }
             } else if (gamePhase === 'finalSelection') {
-                // 최종 선발 라운드 종료 조건: 모든 16인 멤버가 각각 3회씩 등장했거나, 충분한 라운드가 진행되었을 때
-                // 이 예시에서는 11라운드 이상 진행 시 종료 (충분한 점수 분배를 위해)
-                // 또는 특정 멤버의 점수 차이가 충분히 벌어졌을 때 종료하는 로직도 가능
-                if (currentRound >= 11) { // 이 부분을 조절하여 라운드 수 결정
+                // 최종 선발 라운드 종료 조건: 최대 15 라운드
+                if (currentRound >= 15) { 
                     displayFinalResults();
                 } else {
                     startNextRound();
@@ -702,9 +699,9 @@
         function startFinalRounds() {
             gamePhase = 'finalSelection';
             currentRound = 0; // 결선 라운드부터 다시 라운드 카운트 시작
-            playedCombinations = new Set(); // 조합 초기화
+            playedCombinations = new Set(); // 조합 초기화 (결선 라운드용)
             
-            // 최종 16인 멤버의 점수만 초기화 (등장 횟수는 유지하여 3회 등장 제한 규칙 적용)
+            // 최종 16인 멤버의 점수만 초기화 (등장 횟수 및 3위 0점 횟수는 유지하여 3회 등장 제한 규칙 적용)
             for (const name of finalTop16Names) {
                 memberData[name].score = 0; // 점수 초기화
             }
@@ -725,7 +722,7 @@
             finalSelectionListTitle.textContent = '💖 최종 선발 16인 💖';
 
             const sortedFinalists = finalTop16Names
-                .map(name => ({ name: name, score: memberData[name].score })) // 이름과 결선 점수 포함
+                .map(name => ({ name: name, score: memberData[name].score })) 
                 .sort((a, b) => b.score - a.score); 
 
             const top3 = sortedFinalists.slice(0, 3); 
@@ -758,7 +755,7 @@
                 card.classList.add('top-member-card');
                 let rankClass = '';
                 // 실제 순위에 따라 클래스 부여 (원래 top3 배열의 순서를 따름)
-                if (memberName === top3[0].name) { 
+                if (top3.length > 0 && memberName === top3[0].name) { 
                     rankClass = 'rank1';
                 } else if (top3.length > 1 && memberName === top3[1].name) {
                     rankClass = 'rank2';
@@ -791,7 +788,7 @@
                 .sort((a, b) => b.score - a.score); 
 
             let resultText = "--- HKT48 최종 선발 16인 결과 ---\n\n";
-            resultText += `총 진행 라운드 (1차 선발 및 결선 포함): ${currentRound} 라운드\n\n`; 
+            resultText += `총 진행 라운드: ${currentRound} 라운드\n\n`; 
             resultText += "🏆 최종 선발 16인 (순위 기준) 🏆\n";
             sortedFinalists.forEach((member, index) => {
                 resultText += `${index + 1}위. ${member.name}\n`; // 점수 제거
@@ -837,12 +834,8 @@
 
 
         document.addEventListener('DOMContentLoaded', () => {
-            gameScreen.style.display = 'none';
-            resultsScreen.style.display = 'none';
-            startGameButton.style.display = 'block';
-            resetGameButton.style.display = 'none';
-            instructionText.style.display = 'block'; 
-            instructionText.textContent = '게임을 시작하려면 "게임 시작" 버튼을 눌러주세요.';
+            // 페이지 로드 시 바로 게임을 초기화하고 시작
+            initializeGame();
         });
     </script>
 </body>
