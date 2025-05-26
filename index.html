@@ -245,7 +245,7 @@
             font-size: 1.2em;
             color: #555;
             font-weight: normal;
-            display: none; 
+            display: none; /* 점수 표시 비활성화 */
         }
         .rank-label {
             position: absolute;
@@ -490,6 +490,10 @@
         const maxAppearances = 3; // 한 멤버는 3회 이상 등장하지 않음
         const membersPerRound = 3; // 게임당 보여주는 멤버 3명
         const initialSelectionTarget = 16; // 1차 선발 목표 인원
+        // 2페이즈(최종 선발)에서 라운드를 얼마나 더 진행할지 결정하는 임계값
+        // 예: 16명 이하가 된 후에도 10 라운드 더 진행하도록 설정
+        const finalSelectionMaxRoundsAfterTargetMet = 10; 
+        let finalSelectionRoundCount = 0; // 2페이즈 진입 후 라운드 카운트
 
         // 점수 정의
         const scores = {
@@ -519,13 +523,17 @@
                     eliminated: false, // 0점 3번 받으면 탈락
                     lastSeen: -1, // 마지막 등장 라운드
                     previousRoundGroup: new Set(), // 함께 등장했던 멤버들 기록 (세트)
-                    highestRankAchievedInRound: 4 // 라운드별 최고 순위 (1:1순위, 2:2순위, 3:3순위, 4:등장 안함)
+                    // 각 라운드에서 받은 최고 순위 (점수가 같을 때 우선순위 결정용)
+                    // 1: 1순위 받음, 2: 2순위 받음, 3: 3순위 받음, 4: 해당 라운드에 등장하지 않음
+                    // 숫자가 작을수록 좋음. 기본값 4로 설정하여 "등장 안함"으로 시작
+                    highestRankAchievedInRound: 4 
                 };
             });
             currentRound = 0;
             gamePhase = 'initialSelection';
             selectionOrder = [];
             availableMembersForRound = [];
+            finalSelectionRoundCount = 0; // 게임 초기화 시 2페이즈 라운드 카운트 초기화
 
             gameScreen.style.display = 'block';
             resultsScreen.style.display = 'none';
@@ -540,42 +548,39 @@
             if (gamePhase === 'initialSelection') {
                 instructionTextElement.textContent = `현재 인원: ${nonEliminatedCount}명. ${initialSelectionTarget}명을 선발 중입니다.`;
             } else if (gamePhase === 'finalSelection') {
-                instructionTextElement.textContent = `최종 선발 16인 내 점수 경쟁 중입니다.`;
+                instructionTextElement.textContent = `최종 선발 16인 확정을 위한 점수 경쟁 중입니다. (진행 라운드: ${finalSelectionRoundCount})`;
             } else if (gamePhase === 'results') {
                 instructionTextElement.textContent = `게임이 종료되었습니다! 최종 결과를 확인하세요.`;
             }
         }
 
-        function getEligibleMembers(phase) {
+        function getEligibleMembersForRound(phase) {
             let eligible = Object.keys(memberData).filter(name => !memberData[name].eliminated);
 
+            // 등장 횟수 제한 (3회 이상 등장하지 않음)
+            eligible = eligible.filter(name => memberData[name].appearances < maxAppearances);
+            
+            // finalSelection 페이즈에서는 현재 16위권에 드는 멤버들만 대상으로 함
             if (phase === 'finalSelection') {
                 const sortedMembers = getSortedMembers(false);
                 const currentTop16Names = sortedMembers.slice(0, initialSelectionTarget).map(m => m.name);
                 eligible = eligible.filter(name => currentTop16Names.includes(name));
             }
-
-            // 등장 횟수 제한 및 이전 라운드 그룹 중복 방지
-            eligible = eligible.filter(name =>
-                memberData[name].appearances < maxAppearances
-            );
-
-            // 현재 라운드에 뽑힐 멤버를 위한 필터링 (previousRoundGroup 로직)
-            // eligible 배열에서 3명을 뽑을 때, 서로의 previousRoundGroup에 포함되지 않도록 함
+            
             return eligible;
         }
 
         function selectMembersForRound() {
             let selected = [];
-            let eligible = getEligibleMembers(gamePhase);
+            let eligiblePool = getEligibleMembersForRound(gamePhase); // 후보군 가져오기
             let attempts = 0;
             const maxAttempts = 500; 
 
-            // eligible 멤버들을 섞어서 무작위성을 높임
-            eligible.sort(() => Math.random() - 0.5); 
+            // eligiblePool 멤버들을 섞어서 무작위성을 높임
+            eligiblePool.sort(() => Math.random() - 0.5); 
 
-            while (selected.length < membersPerRound && eligible.length > 0 && attempts < maxAttempts) {
-                const candidate = eligible.shift(); // 앞에서부터 하나씩 시도
+            while (selected.length < membersPerRound && eligiblePool.length > 0 && attempts < maxAttempts) {
+                const candidate = eligiblePool.shift(); // 앞에서부터 하나씩 시도
 
                 let canAdd = true;
                 // "같이 등장했던 멤버도 함께 나오지 않으며" 규칙 적용
@@ -591,15 +596,13 @@
                 if (canAdd) {
                     selected.push(candidate);
                 } else {
-                    // 추가할 수 없으면 eligible 뒤로 다시 보내서 다음 시도에 사용
-                    eligible.push(candidate);
+                    // 추가할 수 없으면 eligiblePool 뒤로 다시 보내서 다음 시도에 사용
+                    eligiblePool.push(candidate);
                 }
                 attempts++;
             }
 
-            // 만약 3명을 뽑지 못했으면, 규칙을 완화하여 최대한 채웁니다.
-            // 이 경우 "같이 등장했던 멤버가 함께 나오지 않는다"는 규칙이 깨질 수 있습니다.
-            // 하지만 게임 진행을 위해 최소한의 멤버는 채워야 함.
+            // 만약 3명을 뽑지 못했으면, 규칙을 완화하여 최대한 채움 (게임 진행을 위해)
             if (selected.length < membersPerRound) {
                 const allRemainingEligible = Object.keys(memberData).filter(name =>
                     !memberData[name].eliminated && memberData[name].appearances < maxAppearances && !selected.includes(name)
@@ -615,7 +618,6 @@
 
             // 최종적으로 뽑힌 멤버가 3명 미만이면 게임을 종료할 수 있음
             if (selected.length < membersPerRound) {
-                // 게임 종료 로직 (더 이상 라운드 진행 불가)
                 alert("더 이상 라운드를 진행할 수 있는 멤버가 부족하여 게임을 종료합니다.");
                 gamePhase = 'results';
                 displayResults();
@@ -633,22 +635,40 @@
             selectionOrder = []; // 새 라운드 시작 시 선택 순서 초기화
             memberSelectionDiv.innerHTML = ''; // 이전 멤버 카드 제거
             
+            // 각 멤버의 highestRankAchievedInRound를 4(등장 안함)로 초기화 (새 라운드 시작 전)
+            Object.keys(memberData).forEach(name => {
+                memberData[name].highestRankAchievedInRound = 4;
+            });
+
             // 게임 페이즈 전환 로직
+            const nonEliminatedCount = Object.values(memberData).filter(m => !m.eliminated).length;
+
             if (gamePhase === 'initialSelection') {
-                const nonEliminatedCount = Object.values(memberData).filter(m => !m.eliminated).length;
-                if (nonEliminatedCount <= initialSelectionTarget && currentRound > 1) { // 최소 1라운드 진행 후 전환
+                if (nonEliminatedCount <= initialSelectionTarget) {
                     gamePhase = 'finalSelection';
-                    currentRound = 0; // 최종 선발 라운드 카운트 초기화
-                    currentRoundElement.textContent = currentRound;
+                    finalSelectionRoundCount = 0; // 2페이즈 진입 시 라운드 카운트 초기화
+                    currentRound = 0; // 전체 라운드 카운트도 0으로 (2페이즈 시작을 알림)
+                    currentRoundElement.textContent = `2페이즈 시작!`; // 특별 문구
                     updateInstructionText();
-                    alert(`${initialSelectionTarget}인 선발 단계로 전환됩니다!`);
-                    // 최종 선발 페이즈의 첫 라운드 시작
-                    selectMembersForRound();
-                    return;
+                    alert(`1차 선발이 완료되었습니다! 이제 최종 선발 16인을 가립니다.`);
                 }
             } 
             
-            // 모든 멤버가 3회 이상 등장했거나, 남은 멤버가 없으면 게임 종료
+            if (gamePhase === 'finalSelection') {
+                finalSelectionRoundCount++; // 2페이즈 라운드 카운트 증가
+                currentRoundElement.textContent = `2페이즈 ${finalSelectionRoundCount} 라운드`; // 2페이즈 라운드 표시
+                updateInstructionText();
+
+                // 2페이즈 종료 조건
+                if (finalSelectionRoundCount >= finalSelectionMaxRoundsAfterTargetMet) {
+                    // 2페이즈에서 지정된 라운드 수를 채웠으면 게임 종료
+                    gamePhase = 'results';
+                    displayResults();
+                    return;
+                }
+            }
+            
+            // 더 이상 라운드 진행이 불가능한 경우 (멤버 부족, 모든 멤버 3회 등장 등)
             const canStillPlay = Object.values(memberData).some(m => !m.eliminated && m.appearances < maxAppearances);
             if (!canStillPlay || Object.values(memberData).filter(m => !m.eliminated).length < membersPerRound) {
                 gamePhase = 'results';
@@ -656,7 +676,6 @@
                 return;
             }
 
-            updateInstructionText();
             selectMembersForRound();
         }
 
@@ -719,7 +738,6 @@
             const unselectedMember = currentRoundMembers.find(name => !selectionOrder.includes(name));
             if (unselectedMember) {
                 selectionOrder.push(unselectedMember); // 3순위로 자동 추가
-                // UI에는 3순위 표시 안함 (명시적 선택이 아니므로)
             }
 
             // 점수 부여 및 최고 순위 기록
@@ -735,9 +753,9 @@
                     memberData[name].score += scores.mainRound.rank3; // 0점
                     memberData[name].zeroScoreCount++; // 0점 받은 횟수 증가
                     memberData[name].highestRankAchievedInRound = Math.min(memberData[name].highestRankAchievedInRound, 3);
-                } else { // 라운드에 나왔지만 선택 못된 경우 (이 경우는 발생하지 않아야 함, 3명 중 3명 선택이므로)
-                    // memberData[name].highestRankAchievedInRound = Math.min(memberData[name].highestRankAchievedInRound, 4);
                 }
+                // highestRankAchievedInRound는 현재 라운드에서 받은 순위 중 최고값을 기록
+                // 초기값 4 (등장 안함)보다 작을 때만 업데이트 되므로, 한 번 1순위를 받으면 계속 1로 유지
             });
 
             // 탈락 처리
@@ -778,7 +796,7 @@
             }
             // 정렬 기준:
             // 1. 점수가 높은 순
-            // 2. 점수가 같으면, 라운드별 최고 순위 (1위 > 2위 > 3위)가 높은 순 (highestRank 값은 낮을수록 좋음)
+            // 2. 점수가 같으면, highestRankAchievedInRound (최고 순위, 숫자가 낮을수록 우위)가 높은 순
             // 3. 2번도 같으면, 이름순 (알파벳/가나다)
             sortable.sort((a, b) => {
                 if (b.score !== a.score) {
@@ -806,22 +824,20 @@
             for (let i = 0; i < Math.min(3, sortedMembers.length); i++) {
                 const member = sortedMembers[i];
                 // 동점자가 있으면 공동 순위로 표시
-                let rank = i + 1;
+                let rankText;
                 if (i > 0 && sortedMembers[i].score === sortedMembers[i-1].score && sortedMembers[i].highestRank === sortedMembers[i-1].highestRank) {
-                    // 이전 멤버와 점수, 최고 랭크가 같으면 같은 순위로 표시
-                    rank = '공동 ' + (i); // 이전 순위와 동일하게 표시
+                    rankText = `공동 ${i}위`; // 이전 순위와 동일하게 표시
                 } else {
-                    rank = i + 1;
+                    rankText = `${i + 1}위`;
                 }
                 
                 const card = document.createElement('div');
                 card.classList.add('top-member-card', `rank${i + 1}`); // CSS는 1,2,3위 그대로 사용
                 card.innerHTML = `
-                    <div class="rank-label">${typeof rank === 'number' ? `${rank}위` : rank}</div>
+                    <div class="rank-label">${rankText}</div>
                     <img src="./images/${member.name}.png" alt="${member.name}">
                     <p>${member.name}</p>
-                    <span class="score">점수: ${member.score.toFixed(1)}</span>
-                `;
+                    <span class="score" style="display:none;">점수: ${member.score.toFixed(1)}</span> `;
                 topMembersDisplay.appendChild(card);
             }
 
@@ -833,15 +849,12 @@
                 let rankText = `${i + 1}위`;
                 if (i > 0 && sortedMembers[i].score === sortedMembers[i-1].score && sortedMembers[i].highestRank === sortedMembers[i-1].highestRank) {
                     // 이전 멤버와 점수, 최고 랭크가 같으면 공동 순위로 표시
-                    let prevRank = finalSelectionList.children[i-1].textContent.split('위')[0];
-                    if (prevRank.includes('공동')) {
-                        rankText = prevRank;
-                    } else {
-                        rankText = `공동 ${i}위`;
-                    }
+                    let prevRankText = finalSelectionList.children[i-1].textContent.split(':')[0]; // 예: "1위" 또는 "공동 1위"
+                    rankText = prevRankText; // 이전 순위 텍스트 그대로 가져옴
                 }
                 const listItem = document.createElement('li');
-                listItem.textContent = `${rankText}: ${member.name} (${member.score.toFixed(1)}점)`;
+                // 점수 포함하지 않음
+                listItem.textContent = `${rankText}: ${member.name}`; 
                 finalSelectionList.appendChild(listItem);
             }
             document.getElementById('finalSelectionListTitle').textContent = `💖 최종 선발 ${finalCount}인 💖`;
@@ -855,11 +868,13 @@
             textContent += "--- Top 3 ---\n";
             for (let i = 0; i < Math.min(3, sortedMembers.length); i++) {
                 const member = sortedMembers[i];
-                let rank = i + 1;
+                let rankText;
                 if (i > 0 && sortedMembers[i].score === sortedMembers[i-1].score && sortedMembers[i].highestRank === sortedMembers[i-1].highestRank) {
-                    rank = `공동 ${i}`; 
+                    rankText = `공동 ${i}위`; 
+                } else {
+                    rankText = `${i + 1}위`;
                 }
-                textContent += `${typeof rank === 'number' ? `${rank}위` : rank}: ${member.name} (${member.score.toFixed(1)}점)\n`;
+                textContent += `${rankText}: ${member.name}\n`; // 점수 제외
             }
             textContent += "\n";
 
@@ -869,14 +884,10 @@
                 const member = sortedMembers[i];
                 let rankText = `${i + 1}위`;
                 if (i > 0 && sortedMembers[i].score === sortedMembers[i-1].score && sortedMembers[i].highestRank === sortedMembers[i-1].highestRank) {
-                    let prevRank = finalSelectionList.children[i-1].textContent.split('위')[0];
-                    if (prevRank.includes('공동')) {
-                        rankText = prevRank;
-                    } else {
-                        rankText = `공동 ${i}위`;
-                    }
+                    let prevRankText = `공동 ${i}위`; // 이전 순위 텍스트 그대로 가져옴 (텍스트 저장용이라 이 형식으로)
+                    rankText = prevRankText;
                 }
-                textContent += `${rankText}: ${member.name} (${member.score.toFixed(1)}점)\n`;
+                textContent += `${rankText}: ${member.name}\n`; // 점수 제외
             }
 
             const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
