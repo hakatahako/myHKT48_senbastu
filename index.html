@@ -3,227 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MY HKT48 최애 월드컵</title>
+    <title>멤버 선택 게임</title>
     <style>
-        /* 웹페이지 전체 스타일 */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            text-align: center;
-            background-color: #fce4ec; /* HKT48 테마와 어울리는 밝은 분홍색 계열 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
             color: #333;
             margin: 0;
             padding: 20px;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh; /* 화면 전체 높이 사용 */
+            box-sizing: border-box;
         }
-        /* 게임 컨테이너 스타일 */
         .container {
-            max-width: 800px;
-            margin: 20px auto;
             background-color: #fff;
             padding: 30px;
-            border-radius: 15px;
+            border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            flex-grow: 1; /* 남은 공간을 채우도록 */
-            display: flex;
-            flex-direction: column;
-            justify-content: center; /* 수직 중앙 정렬 */
-            align-items: center; /* 수평 중앙 정렬 */
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+            box-sizing: border-box;
         }
         h1 {
-            color: #ad1457; /* 강렬한 분홍색 */
+            color: #4CAF50;
+            margin-bottom: 25px;
+            font-size: 2.2em;
+        }
+        h2 {
+            color: #2196F3;
             margin-bottom: 20px;
+            font-size: 1.8em;
         }
-        p {
-            font-size: 1.1em;
-            line-height: 1.5;
-            margin-bottom: 15px;
+        .score-board {
+            font-size: 1.3em;
+            margin-bottom: 25px;
+            color: #666;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #e8f5e9;
         }
-        /* 멤버 표시 영역 (사진 3개) */
+        .score-board div span {
+            font-weight: bold;
+            color: #e91e63;
+        }
         .member-display {
             display: flex;
+            flex-wrap: wrap;
             justify-content: center;
-            align-items: flex-end;
-            gap: 20px;
+            gap: 25px;
             margin-top: 30px;
-            flex-wrap: wrap; /* 작은 화면에서 줄바꿈 */
         }
-        /* 각 멤버 카드 스타일 */
         .member-card {
-            flex-basis: 30%; /* 3개의 멤버가 나란히 보이도록, 조절 가능 */
-            min-width: 180px; /* 너무 작아지지 않게 최소 너비 설정 */
-            background-color: #ffebee;
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
             border-radius: 10px;
             padding: 15px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-            transition: transform 0.2s ease-in-out;
-            cursor: pointer; /* 클릭할 수 있다는 표시 */
-            box-sizing: border-box; /* 패딩과 보더가 너비에 포함되도록 */
+            width: 150px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         .member-card:hover {
             transform: translateY(-5px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
         }
-        /* 멤버 이미지 스타일 */
-        .member-image {
-            width: 150px;
-            height: 150px;
-            object-fit: cover; /* 이미지가 잘리지 않고 채워지도록 */
-            border-radius: 50%; /* 이미지를 원형으로 */
-            border: 3px solid #ad1457;
+        .member-card.selected {
+            border: 3px solid #4CAF50;
+            background-color: #e0f7fa;
+        }
+        .member-card img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
             margin-bottom: 10px;
+            border: 2px solid #ddd;
         }
-        /* 멤버 이름 스타일 */
-        .member-name {
-            font-weight: bold;
-            color: #ad1457;
-            font-size: 1.1em;
-        }
-        /* 게임 시작/다음 라운드 버튼 */
-        .game-button {
-            margin-top: 30px;
-            padding: 12px 25px;
-            font-size: 1.1em;
-            background-color: #4CAF50; /* 초록색 버튼 */
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        .game-button:hover {
-            background-color: #45a049;
-        }
-        /* 규칙 안내 섹션 */
-        .rules {
-            margin-top: 40px;
-            text-align: left;
-            padding: 0 20px;
-            border-top: 1px solid #eee;
-            padding-top: 20px;
-            width: 100%; /* 컨테이너 너비에 맞춤 */
-            box-sizing: border-box;
-        }
-        .rules h2 {
-            color: #7b1fa2; /* 보라색 계열 */
-            margin-bottom: 15px;
-        }
-        .rules ul {
-            list-style-type: disc;
-            padding-left: 20px;
-            margin-bottom: 20px;
-        }
-        .rules li {
-            margin-bottom: 8px;
-        }
-        /* 작은 화면에서 반응형 조절 */
-        @media (max-width: 600px) {
-            .member-display {
-                flex-direction: column; /* 세로로 정렬 */
-                align-items: center;
-            }
-            .member-card {
-                flex-basis: 90%; /* 화면 너비의 대부분을 차지 */
-                min-width: unset; /* 최소 너비 제한 해제 */
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>MY HKT48 최애 월드컵</h1>
-        <p>HKT48 <b>43명의 멤버</b>와 함께하는 최애 월드컵에 오신 것을 환영합니다!</p>
-        <p>당신의 최애 멤버를 뽑아주세요!</p>
-
-        <div class="member-display" id="game-container">
-            </div>
-
-        <button class="game-button" id="start-or-next-button">게임 시작</button>
-
-        <div class="rules">
-            <h2>게임 규칙 안내</h2>
-            <ul>
-                <li>총 45명의 HKT48 멤버 중, <b>2025년 5월 기준 장기 휴양중인 2명을 제외한 43명의 멤버</b>가 참여합니다.</li>
-                <li>라운드마다 3명의 멤버가 등장하며, 당신의 선택에 따라 점수가 부여됩니다.</li>
-                <li><b>1위 선택 시 2점</b>, <b>2위 선택 시 1점</b>, <b>3위 선택 시 0점</b>이 해당 멤버에게 부여됩니다.</li>
-                <li>한 멤버는 <b>최대 4회까지</b> 라운드에 등장할 수 있습니다.</li>
-                <li><b>3위를 3번 받은 멤버는 탈락</b>하게 됩니다.</li>
-                <li>최종적으로 1위, 2위, 3위 멤버는 특별히 안내될 예정입니다.</li>
-                <li><small>(*이 게임은 개발 중이며, 복잡한 규칙(예: 등장 조합 제한)은 점진적으로 추가될 수 있습니다.)</small></li>
-            </ul>
-            <p>버튼을 눌러 게임을 시작해주세요!</p>
-        </div>
-    </div>
-    
-    <script>
-        // -----------------------------------------------------------
-        // 1. 멤버 정보 설정 (여기에 43명의 멤버 파일명을 정확히 입력하세요!)
-        //    파일명에서 ".png", ".jpg" 등의 확장자는 제외하고 이름만 입력합니다.
-        //    예: "나가노 라라.png" -> "나가노 라라"
-        // -----------------------------------------------------------
-        const memberNames = [
-            "나가노 라라", "나카노 미나미", "다나카 이오리", "류토 아야네", "마츠나가 유이", "마츠모토 모카",
-            "모리사키 사아야", "사카모토 리노", "시부이 미나", "아오키 히나코", "아키요시 유카","야나세 레이아","야마우치 유나","야마카와 마리아",
-            "야스이 히나", "에구치 코코하", "에우라 유카", "오오바 리사키", "오오우치 린카", "요시다 메이", "이마무라 마리아", "이시마츠 유이나",
-            "이시바시 이부키", "이시이 아야네", "이시카와 아미유", "이시하라 한나", "이자와 미유", "이지마 리리아", "이치무라 아이리", "이쿠노 리나",
-            "지토우네 네네", "츠루카와 나치", "츠츠미 후카", "카타히라 사라", "쿠레 유나", "쿠리야마 리나", "쿠리하라 사에", "키타가와 히이로", 
-            "타치바나 코코로", "타케모토 쿠루미", "토요나가 아키", "후지노 코코하", "후쿠이 카렌"
-            // 여기에 총 43명의 멤버 파일명을 정확하게 추가해주세요!
-            // 각 이름은 큰따옴표로 감싸고 쉼표로 구분합니다.
-            // 반드시 여러분의 43개 파일명과 일치해야 합니다!
-        ];
-
-        // 게임 요소 가져오기
-        const gameContainer = document.getElementById('game-container');
-        const startOrNextButton = document.getElementById('start-or-next-button');
-
-        // -----------------------------------------------------------
-        // 2. 랜덤으로 멤버 3명 선택하여 화면에 표시하는 함수
-        // -----------------------------------------------------------
-        function displayRandomMembers() {
-            gameContainer.innerHTML = ''; // 이전 멤버 카드 모두 삭제
-
-            // memberNames 배열에서 무작위로 3명 선택 (간단한 구현)
-            // 나중에는 탈락자, 등장 횟수, 조합 제한 등을 고려해야 합니다.
-            const shuffledMembers = memberNames.sort(() => 0.5 - Math.random());
-            const selectedThreeMembers = shuffledMembers.slice(0, 3);
-
-            // 선택된 멤버들을 화면에 카드 형태로 표시
-            selectedThreeMembers.forEach(member => {
-                const memberCard = document.createElement('div');
-                memberCard.className = 'member-card';
-                // 나중에 클릭 이벤트 등을 추가할 수 있습니다.
-                // memberCard.onclick = () => alert(`${member} 클릭!`); 
-
-                const img = document.createElement('img');
-                // 이미지 경로: images 폴더 안에 해당 멤버 이름의 .png 파일
-                // 만약 파일 확장자가 .jpg 라면 img.src = `images/${member}.jpg`; 로 변경해야 합니다.
-                img.src = `images/${member}.png`; 
-                img.alt = member; // 이미지 설명을 멤버 이름으로
-                img.className = 'member-image';
-
-                const p = document.createElement('p');
-                p.className = 'member-name';
-                p.textContent = member; // 파일명에서 가져온 이름을 텍스트로 표시
-
-                memberCard.appendChild(img);
-                memberCard.appendChild(p);
-                gameContainer.appendChild(memberCard);
-            });
-
-            startOrNextButton.textContent = "다음 라운드 시작"; // 버튼 텍스트 변경
-        }
-
-        // -----------------------------------------------------------
-        // 3. 버튼 클릭 이벤트 리스너
-        // -----------------------------------------------------------
-        startOrNextButton.addEventListener('click', displayRandomMembers);
-
-        // 페이지 로드 시 초기 상태 설정
-        document.addEventListener('DOMContentLoaded', () => {
-            // 초기 화면에 "게임 시작" 버튼만 보이도록 유지.
-            // 처음에는 멤버를 표시하지 않고, 버튼을 누르면 시작
-        });
-    </script>
-</body>
-</html>
